@@ -8,6 +8,12 @@
 *.o
 *.obj
 velocache
+storage_test
+resp_test
+*.aof
+*.aof.lock
+*.aof.tmp.*
+__pycache__/
 mafia_server
 
 # TypeScript / Node.js dependencies & builds
@@ -22,4 +28,3 @@ yarn-error.log*
 *.swp
 *.swo
 .netrwhist
-
