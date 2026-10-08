@@ -1,181 +1,238 @@
 # VeloCache
 
-VeloCache este un server key-value în C++17 pentru macOS, cu RESP2, persistență AOF și replicare asincronă master/slave. O singură buclă de evenimente cu `kqueue` gestionează socket-uri TCP nonblocking, fără thread per client.
+[![macOS CI](https://github.com/geamnegru/VeloCache/actions/workflows/ci.yml/badge.svg)](https://github.com/geamnegru/VeloCache/actions/workflows/ci.yml)
 
-Serverul și executabilele de test activează fast I/O pentru streams C++ prin `std::ios_base::sync_with_stdio(false)` și `std::cin.tie(nullptr)`. Mesajele de pornire și sincronizare folosesc flush explicit pentru a fi vizibile imediat.
+**Explore a small durable key-value server, from TCP frames to replicated storage.**
 
-Comenzile implementate sunt `PING`, `SET`, `GET` și `SET ... EX seconds`. Cheile și valorile RESP pot conține spații, newline și octeți NUL. TTL-ul este păstrat la restart și la replicare.
+VeloCache is a C++17 key-value server for macOS with RESP2 support, AOF persistence, and asynchronous master/slave replication. A single `kqueue` event loop handles nonblocking TCP sockets without creating a thread for each client.
 
-## Compilare
+The server and C++ test executables enable fast stream I/O with `std::ios_base::sync_with_stdio(false)` and `std::cin.tie(nullptr)`. Startup and synchronization messages are explicitly flushed so they appear immediately.
 
-Serverul folosește biblioteca standard C++ și API-urile POSIX/macOS. Sunt necesare Command Line Tools și un compilator C++17.
+Supported commands are `PING`, `SET`, `GET`, and `SET ... EX seconds`. RESP keys and values can contain spaces, newlines, and NUL bytes. Expiration deadlines survive restarts and replication.
+
+## Try it in two minutes
+
+On macOS with Xcode Command Line Tools installed:
+
+```bash
+git clone https://github.com/geamnegru/VeloCache.git
+cd VeloCache
+make
+./velocache --bind 127.0.0.1 --port 6379 --aof demo.aof
+```
+
+In another terminal:
+
+```bash
+printf 'SET greeting hello\n' | nc 127.0.0.1 6379
+printf 'GET greeting\n' | nc 127.0.0.1 6379
+printf 'PING\n' | nc 127.0.0.1 6379
+```
+
+Expect `OK`, `hello`, and `PONG`. Restart the server with the same AOF to recover the value. Use a trusted local environment: authentication and TLS are not implemented.
+
+VeloCache is an experimental systems project with a small Redis-compatible command subset. It currently targets macOS; Linux support and the full Redis API are not implemented.
+
+[Benchmark methodology](benchmarks/README.md) · [Contributing](CONTRIBUTING.md) · [CI results](https://github.com/geamnegru/VeloCache/actions)
+
+## Building
+
+The server uses the C++ standard library and POSIX/macOS APIs. Building requires Command Line Tools and a C++17 compiler.
 
 ```bash
 make
 ```
 
-Comanda echivalentă:
+Equivalent compiler command:
 
 ```bash
-g++ -std=c++17 -O2 -Wall -Wextra -Wpedantic -pthread main.cpp storage.cpp client_handler.cpp event_loop.cpp server.cpp resp.cpp -o velocache
+g++ -std=c++17 -O2 -Wall -Wextra -Wpedantic -pthread main.cpp storage.cpp client_handler.cpp event_loop.cpp server.cpp resp.cpp background_worker.cpp -o velocache
 ```
 
-## Pornirea masterului și a unui slave
+## Running a master and a slave
 
-În primul terminal:
+In the first terminal:
 
 ```bash
 ./velocache --bind 127.0.0.1 --port 6379 --aof master.aof
 ```
 
-În al doilea terminal:
+In the second terminal:
 
 ```bash
 ./velocache --bind 127.0.0.1 --port 6380 --aof slave.aof --replicaof 127.0.0.1 6379
 ```
 
-Fiecare proces folosește propriul fișier AOF. Slave-ul afișează `Replica synchronized` după instalarea snapshot-ului complet.
+Each process uses its own AOF file. The slave prints `Replica synchronized` after installing a complete snapshot.
 
-| Opțiune | Implicit | Utilizare |
+| Option | Default | Purpose |
 | --- | --- | --- |
-| `--bind HOST` | `0.0.0.0` | adresa IPv4 pe care ascultă serverul |
-| `--port PORT` | `6379` | portul local |
-| `--aof PATH` | `velocache.aof` | jurnalul persistent |
-| `--replicaof HOST PORT` | absentă | pornește procesul ca slave |
-| `--help` | — | afișează opțiunile |
+| `--bind HOST` | `0.0.0.0` | IPv4 address on which the server listens |
+| `--port PORT` | `6379` | Local port |
+| `--aof PATH` | `velocache.aof` | Persistent journal |
+| `--replicaof HOST PORT` | Not set | Run the process as a slave |
+| `--help` | — | Display available options |
 
-Oprește procesul cu `Ctrl+C`. La repornire, folosește aceeași cale `--aof` pentru a recupera datele.
+Stop the process with `Ctrl+C`. Restart it with the same `--aof` path to recover its data.
 
 ## RESP2
 
-Cererile sunt array-uri RESP2 de bulk strings. Serverul numără lungimile în octeți și așteaptă un cadru complet înainte să execute comanda. Răspunsurile păstrează valorile exact, inclusiv caracterele de control.
+Requests are RESP2 arrays of bulk strings. The server measures lengths in bytes and waits for a complete frame before executing a command. Responses preserve values exactly, including control characters.
 
-| Comandă | Răspuns RESP2 |
+| Command | RESP2 response |
 | --- | --- |
 | `PING` | `+PONG\r\n` |
-| `PING message` | bulk string cu mesajul |
+| `PING message` | Bulk string containing the message |
 | `SET key value` | `+OK\r\n` |
 | `SET key value EX seconds` | `+OK\r\n` |
-| `GET key` pentru o cheie existentă | `$<bytes>\r\n<value>\r\n` |
-| `GET key` pentru o cheie absentă sau expirată | `$-1\r\n` |
-| comandă invalidă | `-ERR ...\r\n` |
-| scriere pe slave | `-READONLY ...\r\n` |
-| citire de pe slave în timpul sincronizării | `-LOADING ...\r\n` |
+| `GET key` for an existing key | `$<bytes>\r\n<value>\r\n` |
+| `GET key` for a missing or expired key | `$-1\r\n` |
+| Invalid command | `-ERR ...\r\n` |
+| Write to a slave | `-READONLY ...\r\n` |
+| Read from a slave while synchronizing | `-LOADING ...\r\n` |
 
-O valoare goală are răspunsul `$0\r\n\r\n`, distinct de o cheie absentă. Numele comenzilor și flag-ul `EX` acceptă litere mici sau mari. TTL-ul trebuie să fie un număr întreg pozitiv. Un nou `SET` fără `EX` elimină expirarea anterioară.
+An empty value returns `$0\r\n\r\n`, which is distinct from a missing key. Command names and the `EX` option are case-insensitive. TTL must be a positive integer. A new `SET` without `EX` removes any previous expiration.
 
-Conexiunile RESP rămân deschise pentru mai multe comenzi. Pipelining-ul permite trimiterea mai multor cereri înainte de citirea răspunsurilor, care sunt livrate în ordine. Cererile fragmentate între mai multe citiri TCP sunt acumulate. Erorile de comandă păstrează conexiunea; un cadru RESP invalid produce o eroare și închiderea conexiunii după trimiterea răspunsurilor deja pregătite.
+RESP connections remain open for multiple commands. Pipelining allows clients to send multiple requests before reading their responses, which are delivered in order. Requests fragmented across TCP reads are accumulated. Command errors keep the connection open; an invalid RESP frame produces an error and closes the connection after sending responses already prepared.
 
-Serverul implementează subsetul RESP2 necesar acestor comenzi. Nu implementează RESP3, negocierea `HELLO`, autentificarea, tranzacțiile, Pub/Sub sau celelalte comenzi Redis. Protocolul intern de replicare este separat și rămâne bazat pe cadre text cu checksum.
+The server implements the RESP2 subset needed for these commands. RESP3, `HELLO` negotiation, authentication, transactions, Pub/Sub, and other Redis commands are not implemented. The internal replication protocol is separate and uses text frames with checksums.
 
-Referință: [specificația oficială RESP](https://redis.io/docs/latest/develop/reference/protocol-spec/).
+Reference: [official RESP specification](https://redis.io/docs/latest/develop/reference/protocol-spec/).
 
-### Clientul TypeScript
+### TypeScript client
 
-`client.ts` folosește exclusiv modulul nativ `net`, fără dependințe externe. Construiește cereri RESP2 și decodează răspunsuri fragmentate, respectând lungimile în octeți UTF-8. Deschide un socket pentru fiecare apel și îl distruge după răspuns; timeout-ul de inactivitate este de cinci secunde.
+`client.ts` uses only Node.js's built-in `net` module, with no external dependencies. It builds RESP2 requests and decodes fragmented responses using UTF-8 byte lengths. Each call opens a socket and destroys it after receiving a response; the inactivity timeout is five seconds.
 
-Cu masterul pornit:
+With the master running:
 
 ```bash
 node client.ts
 ```
 
-Exemplul testează `PING`, `SET`, `GET` și expirarea după `EX 1`. Comanda a fost verificată cu Node.js 26, care execută acest TypeScript nativ.
+The example exercises `PING`, `SET`, `GET`, and expiration with `EX 1`. This command has been verified with Node.js 26, which executes this TypeScript directly.
 
-Clasa poate fi importată fără să pornească exemplul:
+The class can be imported without running the example:
 
 ```typescript
 import { VeloClient } from './client.ts';
 
 const client = new VeloClient(6379, '127.0.0.1');
-await client.set('mesaj', 'Salut\nVeloCache', 10);
-console.log(await client.get('mesaj'));
+await client.set('message', 'Hello\nVeloCache', 10);
+console.log(await client.get('message'));
 ```
 
-API-ul public păstrează `Promise<string>`; o cheie absentă este reprezentată prin șirul `'(nil)'`, iar o eroare RESP respinge Promise-ul.
+The public API returns `Promise<string>`; missing keys are represented by the string `'(nil)'`, and RESP errors reject the promise.
 
-### Testare cu redis-cli
+### Testing with redis-cli
 
-Dacă ai deja `redis-cli`, selectează modul RESP2:
+If `redis-cli` is already installed, select RESP2 mode:
 
 ```bash
 redis-cli -2 -h 127.0.0.1 -p 6379 PING
-redis-cli -2 -h 127.0.0.1 -p 6379 SET demo "salvat pe master"
+redis-cli -2 -h 127.0.0.1 -p 6379 SET demo "saved on the master"
 redis-cli -2 -h 127.0.0.1 -p 6380 GET demo
-redis-cli -2 -h 127.0.0.1 -p 6379 SET temporar "expir în două secunde" EX 2
+redis-cli -2 -h 127.0.0.1 -p 6379 SET temporary "expires in two seconds" EX 2
 ```
 
-Opțiunea `-2` este descrisă în [documentația oficială redis-cli](https://redis.io/docs/latest/manual/cli/). Compatibilitatea depinde de folosirea comenzilor implementate.
+The `-2` option is documented in the [official redis-cli documentation](https://redis.io/docs/latest/manual/cli/). Compatibility is limited to the implemented commands.
 
-### Comenzile text existente
+### Existing text commands
 
-Conexiunile care încep cu o comandă text păstrează protocolul inițial: o comandă terminată cu newline, un răspuns text și apoi închiderea conexiunii. Parsarea cu `stringstream` și curățarea caracterelor finale `\n`/`\r` sunt păstrate.
+Connections beginning with a text command retain the original protocol: one newline-terminated command, one text response, and then connection closure. Parsing with `stringstream` and removal of trailing `\n`/`\r` characters are preserved.
 
 ```bash
-printf 'SET demo salvat pe master\n' | nc 127.0.0.1 6379
+printf 'SET demo saved on the master\n' | nc 127.0.0.1 6379
 printf 'GET demo\n' | nc 127.0.0.1 6380
-printf 'SET demo modificat pe slave\n' | nc 127.0.0.1 6380
+printf 'SET demo modified on the slave\n' | nc 127.0.0.1 6380
 ```
 
-După propagarea asincronă, citirea de pe slave întoarce `salvat pe master`. Scrierea de pe slave întoarce `ERR Read only replica`. Folosește RESP pentru chei sau valori care conțin newline ori octeți NUL.
+After asynchronous propagation, reading from the slave returns `saved on the master`. Writing to the slave returns `ERR Read only replica`. Use RESP for keys or values containing newlines or NUL bytes.
 
-## Persistență AOF
+## AOF persistence
 
-Fiecare scriere conține o secvență, cheia, valoarea și expirarea absolută în milisecunde Unix. Cheia și valoarea sunt codificate hex, iar un checksum FNV-1a de 64 de biți verifică integritatea înregistrării. Header-ul versionat este `VCAOF1`.
+Each write contains a sequence number, key, value, and absolute expiration deadline in Unix milliseconds. Keys and values are hex-encoded, and a 64-bit FNV-1a checksum verifies record integrity. The versioned header is `VCAOF1`.
 
-Serverul scrie integral înregistrarea și execută `fsync` înainte de `OK`. La restart, reconstruiește starea din jurnal; timpul petrecut cu serverul oprit este inclus în TTL. `GET` verifică expirarea imediat. O ultimă înregistrare incompletă este trunchiată; o înregistrare completă coruptă oprește pornirea cu o eroare explicită.
+The server writes the complete record and calls `fsync` before returning `OK`. On restart, it reconstructs state from the journal; time spent offline counts toward TTL. `GET` checks expiration immediately. An incomplete final record is truncated; a complete corrupted record prevents startup and produces an explicit error.
 
-Fișierul `<aof>.lock` împiedică folosirea aceluiași jurnal de două procese. Snapshot-ul primit de slave este scris într-un fișier temporar, sincronizat și înlocuit prin `rename`, cu sincronizarea directorului, înainte să devină vizibil. Erorile de persistență opresc procesul înainte să confirme o nouă scriere.
+The `<aof>.lock` file prevents two processes from using the same journal. A snapshot received by a slave is written to a temporary file, synchronized, and installed with `rename` and directory synchronization before becoming visible. Persistence errors stop the process before it acknowledges a new write.
 
-Pentru un test manual, setează o cheie, oprește masterul, pornește-l cu aceeași cale `--aof` și citește cheia. `make clean` păstrează fișierele AOF.
+To test recovery manually, set a key, stop the master, restart it with the same `--aof` path, and read the key. `make clean` preserves AOF files.
 
-## Replicare asincronă
+## Expiration index
 
-Masterul acceptă scrieri și poate avea mai multe noduri slave. Fiecare slave deschide o conexiune persistentă și cere `SYNC`; masterul trimite `SNAP_BEGIN`, intrările și `SNAP_END`, apoi mutațiile `UPDATE` în ordine.
+`StorageEngine` stores expiration deadlines in a `std::multimap<std::int64_t, std::string>`, ordered by absolute deadline. Each value in the primary map keeps an iterator to its own expiration entry. Overwriting a key, removing its TTL, or expiring it through `GET` removes the old entry by iterator without searching the multimap.
 
-Slave-ul validează checksum-ul și secvențele. Instalează snapshot-ul numai când transferul este complet și persistă actualizările în propriul AOF. Cheile și valorile binare sunt păstrate. TTL-ul este transferat ca termen absolut și presupune ceasuri de sistem sincronizate între noduri.
+For `E` keys with TTL, inserting an expiration takes `O(log E)`, while erasing by iterator takes amortized `O(1)`. Cleanup checks the earliest deadline and removes only expired entries: expected `O(K)` for `K` expirations, using expected `O(1)` access in `unordered_map`. If nothing has expired, the check takes `O(1)`. Cleanup does not scan all keys; simultaneous expirations have separate entries in the multimap.
 
-La deconectare, datele existente rămân pe disc, iar citirile produc `LOADING` în RESP sau `ERR Replica syncing` în modul text până la resincronizare. `PING` rămâne disponibil. Reconectarea încearcă la fiecare 500 ms și cere un snapshot nou. Heartbeat-urile verifică secvența o dată pe secundă; lipsa activității timp de cinci secunde declanșează reconectarea.
+AOF replay rebuilds the index from the final state. Snapshot replacement prepares and swaps both the data and the index together, preventing obsolete deadlines from deleting new values.
 
-`OK` confirmă jurnalul masterului. Citirile imediate de pe slave pot vedea o stare anterioară până la propagare. Nu există promovare automată, alegerea unui master sau confirmarea scrierii de către slave.
+## Background storage and disk writes
 
-## Fișierele proiectului
+The server uses a `kqueue` network loop and one `BackgroundWorker` for storage. The worker executes data-access commands, AOF writes, `fsync`, TTL cleanup, snapshot generation and installation, and incoming replication updates in FIFO order. Reads use the same queue so the network loop does not wait for the storage mutex.
 
-| Fișiere | Responsabilitate |
+Results are delivered to the network thread through a nonblocking `socketpair` registered with `kqueue`. The server sends `OK` and propagates mutations to replicas only after persistence completes. `PING` on another connection remains available during a slow `fsync`. Commands and responses on the same connection remain ordered, including pipelined requests.
+
+Each connection has at most one storage operation in flight. The queue enforces an accounting budget of 128 MiB and at most 1024 operations, including results awaiting delivery. This budget reserves space for responses and is not an exact limit on process memory. When the queue is full, commands receive `ERR`, and replica synchronization is retried. Connection identities prevent results from being delivered to reused sockets.
+
+During normal shutdown, the worker finishes accepted operations and is joined. An I/O error is forwarded to the main loop and stops the process without acknowledging the failed write.
+
+## Asynchronous replication
+
+The master accepts writes and can serve multiple slaves. Each slave opens a persistent connection and requests `SYNC`; the master sends `SNAP_BEGIN`, snapshot entries, and `SNAP_END`, followed by ordered `UPDATE` mutations.
+
+The slave validates checksums and sequence numbers. It installs a snapshot only after the transfer is complete and persists updates in its own AOF. Binary keys and values are preserved. TTL is transferred as an absolute deadline and assumes synchronized system clocks across nodes.
+
+After disconnection, existing data remains on disk, while reads return `LOADING` in RESP or `ERR Replica syncing` in text mode until synchronization completes. `PING` remains available. Reconnection is attempted every 500 ms and requests a new snapshot. Heartbeats check the sequence once per second; five seconds without activity triggers reconnection. This timeout is suspended while the connection awaits its own storage operation so that persistence in progress is not canceled.
+
+`OK` confirms the master's journal. Immediate reads from a slave may see an earlier state until propagation completes. Automatic promotion, master election, and slave acknowledgments of writes are not implemented.
+
+## Project files
+
+| Files | Responsibility |
 | --- | --- |
-| `storage.h`, `storage.cpp` | date, TTL, codec intern, AOF, snapshot și lock |
-| `resp.h`, `resp.cpp` | parsarea cererilor și codificarea răspunsurilor RESP2 |
-| `client_handler.h`, `client_handler.cpp` | executarea comenzilor text și RESP |
-| `event_loop.h`, `event_loop.cpp` | adapterul nativ kqueue |
-| `server.h`, `server.cpp` | accept, citiri/scrieri parțiale, pipelining și replicare |
-| `main.cpp` | opțiuni CLI, semnale și pornire |
-| `client.ts` | client RESP2 nativ Node.js și exemplu |
-| `tests/` | teste de storage, protocol și integrare |
+| `storage.h`, `storage.cpp` | Data, multimap TTL index, internal codec, AOF, snapshots, and locking |
+| `background_worker.h`, `background_worker.cpp` | FIFO queue, storage thread, and kqueue notifications |
+| `resp.h`, `resp.cpp` | RESP2 request parsing and response encoding |
+| `client_handler.h`, `client_handler.cpp` | Text and RESP command execution |
+| `event_loop.h`, `event_loop.cpp` | Native kqueue adapter |
+| `server.h`, `server.cpp` | Accepting connections, partial reads/writes, pipelining, and replication |
+| `main.cpp` | CLI options, signals, and startup |
+| `client.ts` | Native Node.js RESP2 client and example |
+| `tests/` | Storage, protocol, and integration tests |
 
-## Limite
+## Limits
 
-Cheile, valorile și fiecare bulk string au maximum 1 MiB. O cerere RESP poate avea maximum 64 de argumente și `4 MiB + 256` octeți; un header de lungime RESP are maximum 32 de octeți, inclusiv markerul și CRLF.
+Keys, values, and individual bulk strings are limited to 1 MiB. A RESP request can contain at most 64 arguments and `4 MiB + 256` bytes. A RESP length header is limited to 32 bytes, including its marker and CRLF.
 
-Bufferul de ieșire al unei conexiuni și transferul unui snapshot au limita de 64 MiB. O replică prea lentă sau un snapshot care depășește limita produce deconectare și o nouă încercare. Sunt acceptate maximum 4096 de conexiuni, în limita descriptorilor disponibili. Conexiunile publice inactive sunt închise după 30 de secunde.
+Each connection's output buffer and each snapshot transfer are limited to 64 MiB. A replica that falls too far behind or a snapshot exceeding this limit causes disconnection and a retry. The server accepts up to 4096 connections, subject to available file descriptors. Inactive public connections are closed after 30 seconds.
 
-Socket-urile sunt nonblocking, dar `fsync`, recuperarea AOF și construirea snapshot-urilor sunt sincrone. Un disc lent sau un snapshot mare poate întârzia celelalte conexiuni. AOF crește cu fiecare scriere; compactarea periodică a jurnalului masterului nu este implementată.
+AOF recovery at startup is synchronous and runs before accepting clients. During normal operation, disk I/O and snapshots run in the worker and do not block the kqueue loop. A slow disk delays queued storage operations, including reads; there is no group commit or pool of writers. AOF grows with each write; periodic compaction of the master's journal is not implemented.
 
-Această versiune rulează pe macOS și nu include autentificare sau TLS.
+This version runs on macOS and does not include authentication or TLS.
 
-## Teste
+## Tests
 
-Sunt necesare Python 3 și, pentru verificarea clientului, Node.js cu suport pentru executarea TypeScript.
+Tests require Python 3 and, for client verification, Node.js with support for executing TypeScript.
 
 ```bash
 make test
 ```
 
-Testele folosesc directoare temporare și porturi libere. Acoperă:
+Tests use temporary directories and available ports. They cover:
 
-- RESP2, pipelining, conexiuni persistente, cadre fragmentate și închiderea parțială a socket-ului;
-- valori goale, chei absente, UTF-8, CRLF și octeți NUL;
-- argumente și TTL invalide, limite de cadru și erori de protocol;
-- persistență după `SIGKILL`, TTL absolut și repararea cozii AOF incomplete;
-- checksum-uri corupte, secvențe și snapshot-uri întrerupte;
-- replicare, modul read-only, reconectare și clientul TypeScript;
-- conexiuni parțiale simultane și epuizarea temporară a descriptorilor.
+- RESP2, pipelining, persistent connections, fragmented frames, and socket half-close;
+- empty values, missing keys, UTF-8, CRLF, and NUL bytes;
+- invalid arguments and TTL, frame limits, and protocol errors;
+- persistence after `SIGKILL`, absolute TTL, and incomplete AOF tail repair;
+- corrupted checksums, sequence validation, and interrupted snapshots;
+- replication, read-only mode, reconnection, and the TypeScript client;
+- simultaneous partial connections and temporary file descriptor exhaustion;
+- simultaneous expirations, TTL overwrites, and index reconstruction;
+- FIFO ordering, backpressure, and controlled worker shutdown;
+- artificially delayed `fsync`, `PING` availability, and I/O failures without acknowledgment.
+
+The slow-disk test builds a macOS interposition library used only by the test process. It delays `fsync` by 800 ms and can inject `EIO`; the production binary contains no test hooks.
+
+## License
+
+VeloCache is licensed under the [MIT License](LICENSE).

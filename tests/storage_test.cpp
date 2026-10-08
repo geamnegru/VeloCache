@@ -186,6 +186,45 @@ void test_replication(const std::filesystem::path &path) {
   }
 }
 
+void test_expiration_index(const std::filesystem::path &path) {
+  const auto past = now_ms() - 1000;
+  const auto future = now_ms() + 60000;
+  {
+    StorageEngine storage(path.string());
+    storage.replace_snapshot({20, {{"expired_a", "a", past},
+                                   {"expired_b", "b", past},
+                                   {"expired_c", "c", past},
+                                   {"future", "later", future},
+                                   {"persistent", "forever", 0}}});
+    storage.apply_replication({21, {"expired_a", "extended", future}});
+    storage.set("expired_b", "ttl removed");
+    storage.clean_expired();
+    require(storage.get("expired_a") == "extended", "Old deadline removed extended key");
+    require(storage.get("expired_b") == "ttl removed", "Old deadline removed persistent key");
+    require(!storage.get("expired_c"), "Equal-deadline expiration was missed");
+    require(storage.get("future") == "later", "Cleanup removed future key");
+    require(storage.get("persistent") == "forever", "Cleanup removed non-TTL key");
+    storage.apply_replication({23, {"get_expired", "expired", past}});
+    require(!storage.get("get_expired"), "GET did not expire indexed key");
+    storage.set("get_expired", "recreated");
+    storage.clean_expired();
+    require(storage.get("get_expired") == "recreated", "GET left a stale expiry iterator");
+  }
+  {
+    StorageEngine recovered(path.string());
+    recovered.clean_expired();
+    require(recovered.get("expired_a") == "extended", "Replay lost updated expiry index");
+    require(recovered.get("expired_b") == "ttl removed", "Replay restored obsolete TTL");
+    require(recovered.get("get_expired") == "recreated", "Replay resurrected obsolete expiry");
+    recovered.replace_snapshot({50, {{"future", "replaced", 0}}});
+    recovered.apply_replication({51, {"old", "expired", past}});
+    recovered.replace_snapshot({70, {{"old", "snapshot replacement", 0}}});
+    recovered.clean_expired();
+    require(recovered.get("old") == "snapshot replacement", "Snapshot retained old expiry index");
+    require(!recovered.get("future"), "Snapshot retained previous indexed key");
+  }
+}
+
 void test_recovery_errors(const std::filesystem::path &path) {
   {
     StorageEngine storage(path.string());
@@ -226,6 +265,7 @@ int main() {
     test_encoding();
     test_storage(temp.path / "storage.aof");
     test_replication(temp.path / "replica.aof");
+    test_expiration_index(temp.path / "expiration-index.aof");
     test_recovery_errors(temp.path / "errors.aof");
     std::cout << "All storage tests passed\n";
     return 0;

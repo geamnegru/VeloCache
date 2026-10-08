@@ -10,6 +10,8 @@
 velocache
 storage_test
 resp_test
+slow_fsync.dylib
+background_worker_test
 *.aof
 *.aof.lock
 *.aof.tmp.*

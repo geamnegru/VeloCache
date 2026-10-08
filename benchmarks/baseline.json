@@ -1,0 +1,32 @@
+{
+  "timestamp_utc": "2026-10-08T07:17:55.094753+00:00",
+  "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "method": "Loopback, one persistent connection, no pipelining, 64-byte value, 50 warmup requests per command, AOF enabled, SET acknowledged after fsync. Python client and server share the machine.",
+  "results": [
+    {
+      "command": "PING",
+      "requests": 500,
+      "ops_per_second": 21556.37,
+      "p50_ms": 0.0452,
+      "p95_ms": 0.0604,
+      "p99_ms": 0.0639
+    },
+    {
+      "command": "GET",
+      "requests": 500,
+      "ops_per_second": 32198.6,
+      "p50_ms": 0.0305,
+      "p95_ms": 0.0357,
+      "p99_ms": 0.0403
+    },
+    {
+      "command": "SET",
+      "requests": 500,
+      "ops_per_second": 26024.89,
+      "p50_ms": 0.0368,
+      "p95_ms": 0.0465,
+      "p99_ms": 0.0561
+    }
+  ]
+}

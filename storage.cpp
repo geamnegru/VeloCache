@@ -324,7 +324,7 @@ void StorageEngine::load() {
           }
           if (!db_.emplace(std::move(mutation.entry.key),
                            StoredValue{std::move(mutation.entry.value),
-                                       mutation.entry.expires_at_ms})
+                                       mutation.entry.expires_at_ms, std::nullopt})
                    .second) {
             throw std::invalid_argument("Duplicate snapshot key");
           }
@@ -336,7 +336,7 @@ void StorageEngine::load() {
           }
           db_[mutation.entry.key] =
               StoredValue{std::move(mutation.entry.value),
-                          mutation.entry.expires_at_ms};
+                          mutation.entry.expires_at_ms, std::nullopt};
           sequence_ = mutation.sequence;
         }
       }
@@ -385,6 +385,11 @@ void StorageEngine::load() {
   if (lseek(aof_fd_, 0, SEEK_END) < 0) {
     throw io_error("Cannot seek AOF");
   }
+  for (auto &entry : db_) {
+    if (entry.second.expires_at_ms != 0)
+      entry.second.expiry = expirations_.emplace(entry.second.expires_at_ms,
+                                                entry.first);
+  }
   purge_expired();
 }
 
@@ -401,28 +406,39 @@ void StorageEngine::commit_mutation(const StorageMutation &mutation) {
     throw std::invalid_argument("Mutation sequence must follow current sequence");
   }
   const auto encoded = encode_mutation(mutation);
-  StoredValue staged{mutation.entry.value, mutation.entry.expires_at_ms};
+  StoredValue staged{mutation.entry.value, mutation.entry.expires_at_ms, std::nullopt};
+  if (staged.expires_at_ms != 0)
+    staged.expiry = expirations_.emplace(staged.expires_at_ms, mutation.entry.key);
   auto entry = db_.find(mutation.entry.key);
   const bool inserted = entry == db_.end();
   if (inserted) {
-    entry = db_.emplace(mutation.entry.key, std::move(staged)).first;
+    const auto expiration = staged.expiry;
+    try {
+      entry = db_.emplace(mutation.entry.key, std::move(staged)).first;
+    } catch (...) {
+      if (expiration)
+        expirations_.erase(*expiration);
+      throw;
+    }
   } else {
-    entry->second.value.swap(staged.value);
-    std::swap(entry->second.expires_at_ms, staged.expires_at_ms);
+    std::swap(entry->second, staged);
   }
   try {
     write_all(aof_fd_, encoded);
     sync_file(aof_fd_);
   } catch (...) {
     writable_ = false;
+    if (entry->second.expiry)
+      expirations_.erase(*entry->second.expiry);
     if (inserted) {
       db_.erase(entry);
     } else {
-      entry->second.value.swap(staged.value);
-      std::swap(entry->second.expires_at_ms, staged.expires_at_ms);
+      std::swap(entry->second, staged);
     }
     throw;
   }
+  if (!inserted && staged.expiry)
+    expirations_.erase(*staged.expiry);
   sequence_ = mutation.sequence;
 }
 
@@ -455,6 +471,8 @@ std::optional<std::string> StorageEngine::get(const std::string &key) {
   }
   if (entry->second.expires_at_ms != 0 &&
       entry->second.expires_at_ms <= current_time_ms()) {
+    if (entry->second.expiry)
+      expirations_.erase(*entry->second.expiry);
     db_.erase(entry);
     return std::nullopt;
   }
@@ -483,13 +501,18 @@ void StorageEngine::replace_snapshot(const StorageSnapshot &snapshot) {
   std::lock_guard<std::mutex> lock(db_mutex_);
   require_writable();
   std::unordered_map<std::string, StoredValue> staged;
+  ExpiryIndex staged_expirations;
   staged.reserve(snapshot.entries.size());
   for (const auto &entry : snapshot.entries) {
     validate_entry(entry);
-    if (!staged.emplace(entry.key, StoredValue{entry.value, entry.expires_at_ms})
+    if (!staged.emplace(entry.key, StoredValue{entry.value, entry.expires_at_ms,
+                                               std::nullopt})
              .second) {
       throw std::invalid_argument("Duplicate snapshot key");
     }
+    if (entry.expires_at_ms != 0)
+      staged.at(entry.key).expiry = staged_expirations.emplace(entry.expires_at_ms,
+                                                              entry.key);
   }
   const std::string header = "VCAOF1 " + std::to_string(snapshot.sequence) + " " +
                              std::to_string(snapshot.entries.size()) + "\n";
@@ -526,6 +549,7 @@ void StorageEngine::replace_snapshot(const StorageSnapshot &snapshot) {
     aof_fd_ = temporary_fd;
     temporary_fd = -1;
     db_.swap(staged);
+    expirations_.swap(staged_expirations);
     sequence_ = snapshot.sequence;
     close(previous_fd);
   } catch (...) {
@@ -542,12 +566,12 @@ void StorageEngine::replace_snapshot(const StorageSnapshot &snapshot) {
 
 void StorageEngine::purge_expired() {
   const auto now = current_time_ms();
-  for (auto entry = db_.begin(); entry != db_.end();) {
-    if (entry->second.expires_at_ms != 0 && entry->second.expires_at_ms <= now) {
-      entry = db_.erase(entry);
-    } else {
-      ++entry;
-    }
+  while (!expirations_.empty() && expirations_.begin()->first <= now) {
+    auto expiration = expirations_.begin();
+    auto entry = db_.find(expiration->second);
+    if (entry != db_.end())
+      db_.erase(entry);
+    expirations_.erase(expiration);
   }
 }
 

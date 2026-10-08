@@ -2,6 +2,7 @@
 #define STORAGE_H
 
 #include <cstdint>
+#include <map>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -45,9 +46,12 @@ public:
   void clean_expired();
 
 private:
+  using ExpiryIndex = std::multimap<std::int64_t, std::string>;
+
   struct StoredValue {
     std::string value;
     std::int64_t expires_at_ms = 0;
+    std::optional<ExpiryIndex::iterator> expiry;
   };
 
   void load();
@@ -60,6 +64,7 @@ private:
   int lock_fd_ = -1;
   std::uint64_t sequence_ = 0;
   bool writable_ = true;
+  ExpiryIndex expirations_;
   std::unordered_map<std::string, StoredValue> db_;
   std::mutex db_mutex_;
 };
