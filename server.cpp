@@ -60,9 +60,11 @@ void configure_socket(int fd) {
       fcntl(fd, F_SETFD, FD_CLOEXEC) < 0) {
     socket_error("configure socket");
   }
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
   int enabled = 1;
   if (setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &enabled, sizeof(enabled)) < 0)
     socket_error("SO_NOSIGPIPE");
+#endif
 }
 
 sockaddr_in resolve_address(const std::string &host, int port) {
@@ -142,8 +144,15 @@ public:
     loop.watch(listener.get(), true, false);
     loop.watch(worker.notification_fd(), true, false);
     std::cout << "Started at " << options.port << " ("
-              << (is_replica() ? "slave" : "master") << ", kqueue, AOF: "
-              << options.aof_path << ")\n" << std::flush;
+              << (is_replica() ? "slave" : "master") << ", "
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
+              << "kqueue"
+#elif defined(__linux__)
+              << "epoll"
+#else
+              << "unknown"
+#endif
+              << ", AOF: " << options.aof_path << ")\n" << std::flush;
   }
 
   ~Server() {
@@ -755,8 +764,12 @@ private:
     while (connection.written < connection.output.size() && sent < io_budget) {
       auto remaining = std::min(connection.output.size() - connection.written,
                                 io_budget - sent);
+      int flags = 0;
+#if defined(__linux__)
+      flags = MSG_NOSIGNAL;
+#endif
       auto count = send(fd, connection.output.data() + connection.written,
-                        remaining, 0);
+                        remaining, flags);
       if (count < 0) {
         if (errno == EINTR)
           continue;

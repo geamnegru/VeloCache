@@ -2,6 +2,7 @@
 #define VELOCACHE_EVENT_LOOP_H
 
 #include <vector>
+#include <memory>
 
 struct SocketEvent {
     int fd;
@@ -25,5 +26,7 @@ public:
 private:
     int queue_fd;
 };
+
+std::unique_ptr<EventLoop> make_event_loop();
 
 #endif

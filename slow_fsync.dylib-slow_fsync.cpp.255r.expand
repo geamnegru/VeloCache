@@ -1,0 +1,1439 @@
+
+;; Function test_fsync (test_fsync, funcdef_no=15, decl_uid=4605, cgraph_uid=16, symbol_order=15)
+
+int test_fsync (int fd)
+{
+  int D.4675;
+  int D.4674;
+  int signal;
+  const char * failure;
+  const char * started;
+  const char * marker;
+  int D.4671;
+  bool iftmp.3;
+  bool retval.2;
+  bool iftmp.1;
+  bool retval.0;
+  int _1;
+  int _2;
+  int * _3;
+  bool iftmp.1_4;
+  bool iftmp.3_5;
+  int _6;
+  bool iftmp.1_18;
+  bool iftmp.1_19;
+  bool retval.0_20;
+  int _24;
+  bool iftmp.3_31;
+  bool iftmp.3_32;
+  bool retval.2_33;
+  int _35;
+  int _38;
+  int _39;
+
+;;   basic block 2, loop depth 0
+;;    pred:       ENTRY
+  marker_16 = getenv ("VELOCACHE_TEST_FSYNC_MARKER");
+  if (marker_16 != 0B)
+    goto <bb 3>; [INV]
+  else
+    goto <bb 5>; [INV]
+;;    succ:       3
+;;                5
+
+;;   basic block 3, loop depth 0
+;;    pred:       2
+  _1 = access (marker_16, 0);
+  if (_1 == 0)
+    goto <bb 4>; [INV]
+  else
+    goto <bb 5>; [INV]
+;;    succ:       4
+;;                5
+
+;;   basic block 4, loop depth 0
+;;    pred:       3
+  iftmp.1_18 = 1;
+  goto <bb 6>; [INV]
+;;    succ:       6
+
+;;   basic block 5, loop depth 0
+;;    pred:       2
+;;                3
+  iftmp.1_19 = 0;
+;;    succ:       6
+
+;;   basic block 6, loop depth 0
+;;    pred:       4
+;;                5
+  # iftmp.1_4 = PHI <iftmp.1_18(4), iftmp.1_19(5)>
+  retval.0_20 = iftmp.1_4;
+  if (retval.0_20 != 0)
+    goto <bb 7>; [INV]
+  else
+    goto <bb 16>; [INV]
+;;    succ:       7
+;;                16
+
+;;   basic block 7, loop depth 0
+;;    pred:       6
+  started_22 = getenv ("VELOCACHE_TEST_FSYNC_STARTED");
+  if (started_22 != 0B)
+    goto <bb 8>; [INV]
+  else
+    goto <bb 10>; [INV]
+;;    succ:       8
+;;                10
+
+;;   basic block 8, loop depth 0
+;;    pred:       7
+  _24 = open (started_22, 577, 384);
+  signal_25 = _24;
+  if (signal_25 >= 0)
+    goto <bb 9>; [INV]
+  else
+    goto <bb 10>; [INV]
+;;    succ:       9
+;;                10
+
+;;   basic block 9, loop depth 0
+;;    pred:       8
+  close (signal_25);
+;;    succ:       10
+
+;;   basic block 10, loop depth 0
+;;    pred:       7
+;;                9
+;;                8
+  usleep (800000);
+  failure_29 = getenv ("VELOCACHE_TEST_FSYNC_FAILURE");
+  if (failure_29 != 0B)
+    goto <bb 11>; [INV]
+  else
+    goto <bb 13>; [INV]
+;;    succ:       11
+;;                13
+
+;;   basic block 11, loop depth 0
+;;    pred:       10
+  _2 = access (failure_29, 0);
+  if (_2 == 0)
+    goto <bb 12>; [INV]
+  else
+    goto <bb 13>; [INV]
+;;    succ:       12
+;;                13
+
+;;   basic block 12, loop depth 0
+;;    pred:       11
+  iftmp.3_31 = 1;
+  goto <bb 14>; [INV]
+;;    succ:       14
+
+;;   basic block 13, loop depth 0
+;;    pred:       10
+;;                11
+  iftmp.3_32 = 0;
+;;    succ:       14
+
+;;   basic block 14, loop depth 0
+;;    pred:       12
+;;                13
+  # iftmp.3_5 = PHI <iftmp.3_31(12), iftmp.3_32(13)>
+  retval.2_33 = iftmp.3_5;
+  if (retval.2_33 != 0)
+    goto <bb 15>; [INV]
+  else
+    goto <bb 16>; [INV]
+;;    succ:       15
+;;                16
+
+;;   basic block 15, loop depth 0
+;;    pred:       14
+  _3 = __errno_location ();
+  *_3 = 5;
+  _35 = -1;
+  // predicted unlikely by early return (on trees) predictor.
+  goto <bb 17>; [INV]
+;;    succ:       17
+
+;;   basic block 16, loop depth 0
+;;    pred:       6
+;;                14
+  _38 = fsync (fd_36(D));
+  _39 = _38;
+;;    succ:       17
+
+;;   basic block 17, loop depth 0
+;;    pred:       15
+;;                16
+  # _6 = PHI <_35(15), _39(16)>
+<L19>:
+  return _6;
+;;    succ:       EXIT
+
+}
+
+
+
+Partition map 
+
+Partition 1 (_1 - 1 )
+Partition 2 (_2 - 2 )
+Partition 3 (_3 - 3 )
+Partition 4 (iftmp.1_4 - 4 )
+Partition 5 (iftmp.3_5 - 5 )
+Partition 6 (_6 - 6 )
+Partition 16 (marker_16 - 16 )
+Partition 18 (iftmp.1_18 - 18 )
+Partition 19 (iftmp.1_19 - 19 )
+Partition 20 (retval.0_20 - 20 )
+Partition 22 (started_22 - 22 )
+Partition 24 (_24 - 24 )
+Partition 25 (signal_25 - 25 )
+Partition 29 (failure_29 - 29 )
+Partition 31 (iftmp.3_31 - 31 )
+Partition 32 (iftmp.3_32 - 32 )
+Partition 33 (retval.2_33 - 33 )
+Partition 35 (_35 - 35 )
+Partition 36 (fd_36(D) - 36 )
+Partition 38 (_38 - 38 )
+Partition 39 (_39 - 39 )
+Partition 40 (_40(D) - 40 )
+
+
+Coalescible Partition map 
+
+Partition 0, base 0 (iftmp.1_4 - 4 18 19 20 )
+Partition 1, base 1 (iftmp.3_5 - 5 31 32 33 )
+Partition 2, base 2 (_6 - 6 35 38 39 )
+Partition 10, base 3 (fd_36(D) - 36 )
+Partition 13, base 4 (_40(D) - 40 )
+
+
+Partition map 
+
+Partition 0 (iftmp.1_4 - 4 )
+Partition 1 (iftmp.3_5 - 5 )
+Partition 2 (_6 - 6 )
+Partition 3 (iftmp.1_18 - 18 )
+Partition 4 (iftmp.1_19 - 19 )
+Partition 5 (retval.0_20 - 20 )
+Partition 6 (iftmp.3_31 - 31 )
+Partition 7 (iftmp.3_32 - 32 )
+Partition 8 (retval.2_33 - 33 )
+Partition 9 (_35 - 35 )
+Partition 10 (fd_36(D) - 36 )
+Partition 11 (_38 - 38 )
+Partition 12 (_39 - 39 )
+Partition 13 (_40(D) - 40 )
+
+
+Conflict graph:
+
+After sorting:
+Sorted Coalesce list:
+(10000, 0) iftmp.1_4 <-> iftmp.1_18
+(10000, 0) iftmp.1_4 <-> iftmp.1_19
+(10000, 0) iftmp.1_4 <-> retval.0_20
+(10000, 0) iftmp.3_5 <-> iftmp.3_31
+(10000, 0) iftmp.3_5 <-> iftmp.3_32
+(10000, 0) iftmp.3_5 <-> retval.2_33
+(10000, 0) _38 <-> _39
+(10000, 0) _6 <-> _35
+(10000, 0) _6 <-> _39
+
+Partition map 
+
+Partition 0 (iftmp.1_4 - 4 )
+Partition 1 (iftmp.3_5 - 5 )
+Partition 2 (_6 - 6 )
+Partition 3 (iftmp.1_18 - 18 )
+Partition 4 (iftmp.1_19 - 19 )
+Partition 5 (retval.0_20 - 20 )
+Partition 6 (iftmp.3_31 - 31 )
+Partition 7 (iftmp.3_32 - 32 )
+Partition 8 (retval.2_33 - 33 )
+Partition 9 (_35 - 35 )
+Partition 10 (fd_36(D) - 36 )
+Partition 11 (_38 - 38 )
+Partition 12 (_39 - 39 )
+Partition 13 (_40(D) - 40 )
+
+Coalesce list: (4)iftmp.1_4 & (18)iftmp.1_18 [map: 0, 3] : Success -> 0
+Coalesce list: (4)iftmp.1_4 & (19)iftmp.1_19 [map: 0, 4] : Success -> 0
+Coalesce list: (4)iftmp.1_4 & (20)retval.0_20 [map: 0, 5] : Success -> 0
+Coalesce list: (5)iftmp.3_5 & (31)iftmp.3_31 [map: 1, 6] : Success -> 1
+Coalesce list: (5)iftmp.3_5 & (32)iftmp.3_32 [map: 1, 7] : Success -> 1
+Coalesce list: (5)iftmp.3_5 & (33)retval.2_33 [map: 1, 8] : Success -> 1
+Coalesce list: (38)_38 & (39)_39 [map: 11, 12] : Success -> 11
+Coalesce list: (6)_6 & (35)_35 [map: 2, 9] : Success -> 2
+Coalesce list: (6)_6 & (39)_38 [map: 2, 11] : Success -> 2
+After Coalescing:
+
+Partition map 
+
+Partition 0 (_1 - 1 )
+Partition 1 (_2 - 2 )
+Partition 2 (_3 - 3 )
+Partition 3 (iftmp.1_4 - 4 18 19 20 )
+Partition 4 (iftmp.3_5 - 5 31 32 33 )
+Partition 5 (_6 - 6 35 38 39 )
+Partition 6 (marker_16 - 16 )
+Partition 7 (started_22 - 22 )
+Partition 8 (_24 - 24 )
+Partition 9 (signal_25 - 25 )
+Partition 10 (failure_29 - 29 )
+Partition 11 (fd_36(D) - 36 )
+Partition 12 (_40(D) - 40 )
+
+int test_fsync (int fd)
+{
+  int D.4675;
+  int D.4674;
+  int signal;
+  const char * failure;
+  const char * started;
+  const char * marker;
+  int D.4671;
+  bool iftmp.3;
+  bool retval.2;
+  bool iftmp.1;
+  bool retval.0;
+  int _1;
+  int _2;
+  int * _3;
+  bool iftmp.1_4;
+  bool iftmp.3_5;
+  int _6;
+  bool iftmp.1_18;
+  bool iftmp.1_19;
+  bool retval.0_20;
+  int _24;
+  bool iftmp.3_31;
+  bool iftmp.3_32;
+  bool retval.2_33;
+  int _35;
+  int _38;
+  int _39;
+  int _40(D);
+
+;;   basic block 2, loop depth 0
+;;    pred:       ENTRY
+  marker_16 = getenv ("VELOCACHE_TEST_FSYNC_MARKER");
+  if (marker_16 != 0B)
+    goto <bb 3>; [INV]
+  else
+    goto <bb 5>; [INV]
+;;    succ:       3
+;;                5
+
+;;   basic block 3, loop depth 0
+;;    pred:       2
+  _1 = access (marker_16, 0);
+  if (_1 == 0)
+    goto <bb 4>; [INV]
+  else
+    goto <bb 5>; [INV]
+;;    succ:       4
+;;                5
+
+;;   basic block 4, loop depth 0
+;;    pred:       3
+  iftmp.1_18 = 1;
+  goto <bb 6>; [INV]
+;;    succ:       6
+
+;;   basic block 5, loop depth 0
+;;    pred:       2
+;;                3
+  iftmp.1_19 = 0;
+;;    succ:       6
+
+;;   basic block 6, loop depth 0
+;;    pred:       4
+;;                5
+  # iftmp.1_4 = PHI <iftmp.1_18(4), iftmp.1_19(5)>
+  retval.0_20 = iftmp.1_4;
+  if (retval.0_20 != 0)
+    goto <bb 7>; [INV]
+  else
+    goto <bb 16>; [INV]
+;;    succ:       7
+;;                16
+
+;;   basic block 7, loop depth 0
+;;    pred:       6
+  started_22 = getenv ("VELOCACHE_TEST_FSYNC_STARTED");
+  if (started_22 != 0B)
+    goto <bb 8>; [INV]
+  else
+    goto <bb 10>; [INV]
+;;    succ:       8
+;;                10
+
+;;   basic block 8, loop depth 0
+;;    pred:       7
+  _24 = open (started_22, 577, 384);
+  signal_25 = _24;
+  if (signal_25 >= 0)
+    goto <bb 9>; [INV]
+  else
+    goto <bb 10>; [INV]
+;;    succ:       9
+;;                10
+
+;;   basic block 9, loop depth 0
+;;    pred:       8
+  close (signal_25);
+;;    succ:       10
+
+;;   basic block 10, loop depth 0
+;;    pred:       7
+;;                9
+;;                8
+  usleep (800000);
+  failure_29 = getenv ("VELOCACHE_TEST_FSYNC_FAILURE");
+  if (failure_29 != 0B)
+    goto <bb 11>; [INV]
+  else
+    goto <bb 13>; [INV]
+;;    succ:       11
+;;                13
+
+;;   basic block 11, loop depth 0
+;;    pred:       10
+  _2 = access (failure_29, 0);
+  if (_2 == 0)
+    goto <bb 12>; [INV]
+  else
+    goto <bb 13>; [INV]
+;;    succ:       12
+;;                13
+
+;;   basic block 12, loop depth 0
+;;    pred:       11
+  iftmp.3_31 = 1;
+  goto <bb 14>; [INV]
+;;    succ:       14
+
+;;   basic block 13, loop depth 0
+;;    pred:       10
+;;                11
+  iftmp.3_32 = 0;
+;;    succ:       14
+
+;;   basic block 14, loop depth 0
+;;    pred:       12
+;;                13
+  # iftmp.3_5 = PHI <iftmp.3_31(12), iftmp.3_32(13)>
+  retval.2_33 = iftmp.3_5;
+  if (retval.2_33 != 0)
+    goto <bb 15>; [INV]
+  else
+    goto <bb 16>; [INV]
+;;    succ:       15
+;;                16
+
+;;   basic block 15, loop depth 0
+;;    pred:       14
+  _3 = __errno_location ();
+  *_3 = 5;
+  _35 = -1;
+  // predicted unlikely by early return (on trees) predictor.
+  goto <bb 17>; [INV]
+;;    succ:       17
+
+;;   basic block 16, loop depth 0
+;;    pred:       6
+;;                14
+  _38 = fsync (fd_36(D));
+  _39 = _38;
+;;    succ:       17
+
+;;   basic block 17, loop depth 0
+;;    pred:       15
+;;                16
+  # _6 = PHI <_35(15), _39(16)>
+<L19>:
+  return _6;
+;;    succ:       EXIT
+
+}
+
+
+Partition 3: size 8 align 8
+	failure_29
+Partition 1: size 8 align 8
+	started_22
+Partition 0: size 8 align 8
+	marker_16
+Partition 2: size 4 align 4
+	signal_25
+
+;; Generating RTL for gimple basic block 2
+
+;; marker_16 = getenv ("VELOCACHE_TEST_FSYNC_MARKER");
+
+(insn 6 5 7 (set (reg:DI 90)
+        (symbol_ref/f:DI ("*.LC0") [flags 0x2]  <var_decl 0x741bf8ac3ea0 *.LC0>)) "tests/slow_fsync.cpp":7:35 -1
+     (nil))
+
+(insn 7 6 8 (set (reg:DI 5 di)
+        (reg:DI 90)) "tests/slow_fsync.cpp":7:35 -1
+     (expr_list:REG_EQUAL (symbol_ref/f:DI ("*.LC0") [flags 0x2]  <var_decl 0x741bf8ac3ea0 *.LC0>)
+        (nil)))
+
+(call_insn 8 7 9 (set (reg:DI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("getenv") [flags 0x41]  <function_decl 0x741bf8a5da00 getenv>) [0 getenv S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":7:35 -1
+     (expr_list:REG_EH_REGION (const_int 0 [0])
+        (nil))
+    (expr_list:DI (use (reg:DI 5 di))
+        (nil)))
+
+(insn 9 8 10 (set (reg:DI 91)
+        (reg:DI 0 ax)) "tests/slow_fsync.cpp":7:35 -1
+     (nil))
+
+(insn 10 9 0 (set (mem/f/c:DI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                (const_int -24 [0xffffffffffffffe8])) [2 marker+0 S8 A64])
+        (reg:DI 91)) "tests/slow_fsync.cpp":7:35 -1
+     (nil))
+
+;; if (marker_16 != 0B)
+
+(insn 11 10 12 (set (reg:CCZ 17 flags)
+        (compare:CCZ (mem/f/c:DI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                    (const_int -24 [0xffffffffffffffe8])) [2 marker+0 S8 A64])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":8:14 -1
+     (nil))
+
+(jump_insn 12 11 0 (set (pc)
+        (if_then_else (eq (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 0)
+            (pc))) "tests/slow_fsync.cpp":8:14 -1
+     (nil))
+
+;; Generating RTL for gimple basic block 3
+
+;; _1 = access (marker_16, 0);
+
+(insn 14 13 15 (set (reg:DI 92)
+        (mem/f/c:DI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                (const_int -24 [0xffffffffffffffe8])) [2 marker+0 S8 A64])) "tests/slow_fsync.cpp":8:23 discrim 1 -1
+     (nil))
+
+(insn 15 14 16 (set (reg:SI 4 si)
+        (const_int 0 [0])) "tests/slow_fsync.cpp":8:23 discrim 1 -1
+     (nil))
+
+(insn 16 15 17 (set (reg:DI 5 di)
+        (reg:DI 92)) "tests/slow_fsync.cpp":8:23 discrim 1 -1
+     (nil))
+
+(call_insn 17 16 18 (set (reg:SI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("access") [flags 0x41]  <function_decl 0x741bf8a93200 access>) [0 access S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":8:23 discrim 1 -1
+     (expr_list:REG_EH_REGION (const_int 0 [0])
+        (nil))
+    (expr_list:DI (use (reg:DI 5 di))
+        (expr_list:SI (use (reg:SI 4 si))
+            (nil))))
+
+(insn 18 17 0 (set (reg:SI 82 [ _1 ])
+        (reg:SI 0 ax)) "tests/slow_fsync.cpp":8:23 discrim 1 -1
+     (nil))
+
+;; if (_1 == 0)
+
+(insn 19 18 20 (set (reg:CCZ 17 flags)
+        (compare:CCZ (reg:SI 82 [ _1 ])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":8:14 discrim 1 -1
+     (nil))
+
+(jump_insn 20 19 0 (set (pc)
+        (if_then_else (ne (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 0)
+            (pc))) "tests/slow_fsync.cpp":8:14 discrim 1 -1
+     (nil))
+
+;; Generating RTL for gimple basic block 4
+
+;; iftmp.1_18 = 1;
+
+(insn 22 21 0 (set (reg:QI 85 [ iftmp.1_4 ])
+        (const_int 1 [0x1])) "tests/slow_fsync.cpp":8:14 discrim 3 -1
+     (nil))
+
+;; Generating RTL for gimple basic block 5
+
+;; 
+
+(code_label 25 24 26 2 (nil) [0 uses])
+
+(note 26 25 0 NOTE_INSN_BASIC_BLOCK)
+
+;; iftmp.1_19 = 0;
+
+(insn 27 26 0 (set (reg:QI 85 [ iftmp.1_4 ])
+        (const_int 0 [0])) "tests/slow_fsync.cpp":8:14 discrim 4 -1
+     (nil))
+
+;; Generating RTL for gimple basic block 6
+
+;; 
+
+(code_label 28 27 29 3 (nil) [0 uses])
+
+(note 29 28 0 NOTE_INSN_BASIC_BLOCK)
+
+;; retval.0_20 = iftmp.1_4;
+
+(nil)
+
+;; if (retval.0_20 != 0)
+
+(insn 30 29 31 (set (reg:CCZ 17 flags)
+        (compare:CCZ (reg:QI 85 [ iftmp.1_4 ])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":8:3 discrim 6 -1
+     (nil))
+
+(jump_insn 31 30 0 (set (pc)
+        (if_then_else (eq (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 0)
+            (pc))) "tests/slow_fsync.cpp":8:3 discrim 6 -1
+     (nil))
+
+;; Generating RTL for gimple basic block 7
+
+;; started_22 = getenv ("VELOCACHE_TEST_FSYNC_STARTED");
+
+(insn 33 32 34 (set (reg:DI 93)
+        (symbol_ref/f:DI ("*.LC1") [flags 0x2]  <var_decl 0x741bf8ac3f30 *.LC1>)) "tests/slow_fsync.cpp":9:38 -1
+     (nil))
+
+(insn 34 33 35 (set (reg:DI 5 di)
+        (reg:DI 93)) "tests/slow_fsync.cpp":9:38 -1
+     (expr_list:REG_EQUAL (symbol_ref/f:DI ("*.LC1") [flags 0x2]  <var_decl 0x741bf8ac3f30 *.LC1>)
+        (nil)))
+
+(call_insn 35 34 36 (set (reg:DI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("getenv") [flags 0x41]  <function_decl 0x741bf8a5da00 getenv>) [0 getenv S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":9:38 -1
+     (expr_list:REG_EH_REGION (const_int 0 [0])
+        (nil))
+    (expr_list:DI (use (reg:DI 5 di))
+        (nil)))
+
+(insn 36 35 37 (set (reg:DI 94)
+        (reg:DI 0 ax)) "tests/slow_fsync.cpp":9:38 -1
+     (nil))
+
+(insn 37 36 0 (set (mem/f/c:DI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                (const_int -16 [0xfffffffffffffff0])) [2 started+0 S8 A64])
+        (reg:DI 94)) "tests/slow_fsync.cpp":9:38 -1
+     (nil))
+
+;; if (started_22 != 0B)
+
+(insn 38 37 39 (set (reg:CCZ 17 flags)
+        (compare:CCZ (mem/f/c:DI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                    (const_int -16 [0xfffffffffffffff0])) [2 started+0 S8 A64])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":10:5 -1
+     (nil))
+
+(jump_insn 39 38 0 (set (pc)
+        (if_then_else (eq (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 0)
+            (pc))) "tests/slow_fsync.cpp":10:5 -1
+     (nil))
+
+;; Generating RTL for gimple basic block 8
+
+;; _24 = open (started_22, 577, 384);
+
+(insn 41 40 42 (set (reg:DI 95)
+        (mem/f/c:DI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                (const_int -16 [0xfffffffffffffff0])) [2 started+0 S8 A64])) "tests/slow_fsync.cpp":11:24 -1
+     (nil))
+
+(insn 42 41 43 (set (reg:SI 1 dx)
+        (const_int 384 [0x180])) "tests/slow_fsync.cpp":11:24 -1
+     (nil))
+
+(insn 43 42 44 (set (reg:SI 4 si)
+        (const_int 577 [0x241])) "tests/slow_fsync.cpp":11:24 -1
+     (nil))
+
+(insn 44 43 45 (set (reg:DI 5 di)
+        (reg:DI 95)) "tests/slow_fsync.cpp":11:24 -1
+     (nil))
+
+(insn 45 44 46 (set (reg:QI 0 ax)
+        (const_int 0 [0])) "tests/slow_fsync.cpp":11:24 -1
+     (nil))
+
+(call_insn 46 45 47 (set (reg:SI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("open") [flags 0x41]  <function_decl 0x741bf8a88600 open>) [0 open S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":11:24 -1
+     (nil)
+    (expr_list (use (reg:QI 0 ax))
+        (expr_list:DI (use (reg:DI 5 di))
+            (expr_list:SI (use (reg:SI 4 si))
+                (expr_list:SI (use (reg:SI 1 dx))
+                    (nil))))))
+
+(insn 47 46 0 (set (reg:SI 88 [ _24 ])
+        (reg:SI 0 ax)) "tests/slow_fsync.cpp":11:24 -1
+     (nil))
+
+;; signal_25 = _24;
+
+(insn 48 47 0 (set (mem/c:SI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                (const_int -28 [0xffffffffffffffe4])) [1 signal+0 S4 A32])
+        (reg:SI 88 [ _24 ])) "tests/slow_fsync.cpp":11:24 discrim 1 -1
+     (nil))
+
+;; if (signal_25 >= 0)
+
+(insn 51 48 52 (set (reg:CCGOC 17 flags)
+        (compare:CCGOC (mem/c:SI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                    (const_int -28 [0xffffffffffffffe4])) [1 signal+0 S4 A32])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":12:7 -1
+     (nil))
+
+(jump_insn 52 51 0 (set (pc)
+        (if_then_else (lt (reg:CCGOC 17 flags)
+                (const_int 0 [0]))
+            (label_ref 0)
+            (pc))) "tests/slow_fsync.cpp":12:7 -1
+     (nil))
+
+;; Generating RTL for gimple basic block 9
+
+;; close (signal_25);
+
+(insn 54 53 55 (set (reg:SI 96)
+        (mem/c:SI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                (const_int -28 [0xffffffffffffffe4])) [1 signal+0 S4 A32])) "tests/slow_fsync.cpp":13:14 -1
+     (nil))
+
+(insn 55 54 56 (set (reg:SI 5 di)
+        (reg:SI 96)) "tests/slow_fsync.cpp":13:14 -1
+     (nil))
+
+(call_insn 56 55 0 (set (reg:SI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("close") [flags 0x41]  <function_decl 0x741bf8a93900 close>) [0 close S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":13:14 -1
+     (nil)
+    (expr_list:SI (use (reg:SI 5 di))
+        (nil)))
+
+;; Generating RTL for gimple basic block 10
+
+;; 
+
+(code_label 57 56 58 5 (nil) [0 uses])
+
+(note 58 57 0 NOTE_INSN_BASIC_BLOCK)
+
+;; usleep (800000);
+
+(insn 59 58 60 (set (reg:SI 5 di)
+        (const_int 800000 [0xc3500])) "tests/slow_fsync.cpp":15:11 -1
+     (nil))
+
+(call_insn 60 59 0 (set (reg:SI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("usleep") [flags 0x41]  <function_decl 0x741bf8a99600 usleep>) [0 usleep S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":15:11 -1
+     (nil)
+    (expr_list:SI (use (reg:SI 5 di))
+        (nil)))
+
+;; failure_29 = getenv ("VELOCACHE_TEST_FSYNC_FAILURE");
+
+(insn 61 60 62 (set (reg:DI 97)
+        (symbol_ref/f:DI ("*.LC2") [flags 0x2]  <var_decl 0x741bf8ae7000 *.LC2>)) "tests/slow_fsync.cpp":16:38 -1
+     (nil))
+
+(insn 62 61 63 (set (reg:DI 5 di)
+        (reg:DI 97)) "tests/slow_fsync.cpp":16:38 -1
+     (expr_list:REG_EQUAL (symbol_ref/f:DI ("*.LC2") [flags 0x2]  <var_decl 0x741bf8ae7000 *.LC2>)
+        (nil)))
+
+(call_insn 63 62 64 (set (reg:DI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("getenv") [flags 0x41]  <function_decl 0x741bf8a5da00 getenv>) [0 getenv S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":16:38 -1
+     (expr_list:REG_EH_REGION (const_int 0 [0])
+        (nil))
+    (expr_list:DI (use (reg:DI 5 di))
+        (nil)))
+
+(insn 64 63 65 (set (reg:DI 98)
+        (reg:DI 0 ax)) "tests/slow_fsync.cpp":16:38 -1
+     (nil))
+
+(insn 65 64 0 (set (mem/f/c:DI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                (const_int -8 [0xfffffffffffffff8])) [2 failure+0 S8 A64])
+        (reg:DI 98)) "tests/slow_fsync.cpp":16:38 -1
+     (nil))
+
+;; if (failure_29 != 0B)
+
+(insn 66 65 67 (set (reg:CCZ 17 flags)
+        (compare:CCZ (mem/f/c:DI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                    (const_int -8 [0xfffffffffffffff8])) [2 failure+0 S8 A64])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":17:17 -1
+     (nil))
+
+(jump_insn 67 66 0 (set (pc)
+        (if_then_else (eq (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 0)
+            (pc))) "tests/slow_fsync.cpp":17:17 -1
+     (nil))
+
+;; Generating RTL for gimple basic block 11
+
+;; _2 = access (failure_29, 0);
+
+(insn 69 68 70 (set (reg:DI 99)
+        (mem/f/c:DI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                (const_int -8 [0xfffffffffffffff8])) [2 failure+0 S8 A64])) "tests/slow_fsync.cpp":17:26 discrim 1 -1
+     (nil))
+
+(insn 70 69 71 (set (reg:SI 4 si)
+        (const_int 0 [0])) "tests/slow_fsync.cpp":17:26 discrim 1 -1
+     (nil))
+
+(insn 71 70 72 (set (reg:DI 5 di)
+        (reg:DI 99)) "tests/slow_fsync.cpp":17:26 discrim 1 -1
+     (nil))
+
+(call_insn 72 71 73 (set (reg:SI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("access") [flags 0x41]  <function_decl 0x741bf8a93200 access>) [0 access S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":17:26 discrim 1 -1
+     (expr_list:REG_EH_REGION (const_int 0 [0])
+        (nil))
+    (expr_list:DI (use (reg:DI 5 di))
+        (expr_list:SI (use (reg:SI 4 si))
+            (nil))))
+
+(insn 73 72 0 (set (reg:SI 83 [ _2 ])
+        (reg:SI 0 ax)) "tests/slow_fsync.cpp":17:26 discrim 1 -1
+     (nil))
+
+;; if (_2 == 0)
+
+(insn 74 73 75 (set (reg:CCZ 17 flags)
+        (compare:CCZ (reg:SI 83 [ _2 ])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":17:17 discrim 1 -1
+     (nil))
+
+(jump_insn 75 74 0 (set (pc)
+        (if_then_else (ne (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 0)
+            (pc))) "tests/slow_fsync.cpp":17:17 discrim 1 -1
+     (nil))
+
+;; Generating RTL for gimple basic block 12
+
+;; iftmp.3_31 = 1;
+
+(insn 77 76 0 (set (reg:QI 86 [ iftmp.3_5 ])
+        (const_int 1 [0x1])) "tests/slow_fsync.cpp":17:17 discrim 3 -1
+     (nil))
+
+;; Generating RTL for gimple basic block 13
+
+;; 
+
+(code_label 80 79 81 6 (nil) [0 uses])
+
+(note 81 80 0 NOTE_INSN_BASIC_BLOCK)
+
+;; iftmp.3_32 = 0;
+
+(insn 82 81 0 (set (reg:QI 86 [ iftmp.3_5 ])
+        (const_int 0 [0])) "tests/slow_fsync.cpp":17:17 discrim 4 -1
+     (nil))
+
+;; Generating RTL for gimple basic block 14
+
+;; 
+
+(code_label 83 82 84 7 (nil) [0 uses])
+
+(note 84 83 0 NOTE_INSN_BASIC_BLOCK)
+
+;; retval.2_33 = iftmp.3_5;
+
+(nil)
+
+;; if (retval.2_33 != 0)
+
+(insn 85 84 86 (set (reg:CCZ 17 flags)
+        (compare:CCZ (reg:QI 86 [ iftmp.3_5 ])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":17:5 discrim 6 -1
+     (nil))
+
+(jump_insn 86 85 0 (set (pc)
+        (if_then_else (eq (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 0)
+            (pc))) "tests/slow_fsync.cpp":17:5 discrim 6 -1
+     (nil))
+
+;; Generating RTL for gimple basic block 15
+
+;; _3 = __errno_location ();
+
+(call_insn/u 88 87 89 (set (reg:DI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("__errno_location") [flags 0x41]  <function_decl 0x741bf8de9d00 __errno_location>) [0 __errno_location S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":18:7 -1
+     (expr_list:REG_EH_REGION (const_int 0 [0])
+        (nil))
+    (nil))
+
+(insn 89 88 0 (set (reg/f:DI 84 [ _3 ])
+        (reg:DI 0 ax)) "tests/slow_fsync.cpp":18:7 -1
+     (nil))
+
+;; *_3 = 5;
+
+(insn 90 89 0 (set (mem:SI (reg/f:DI 84 [ _3 ]) [1 *_3+0 S4 A32])
+        (const_int 5 [0x5])) "tests/slow_fsync.cpp":18:13 discrim 1 -1
+     (nil))
+
+;; _35 = -1;
+
+(insn 91 90 0 (set (reg:SI 87 [ _6 ])
+        (const_int -1 [0xffffffffffffffff])) "tests/slow_fsync.cpp":19:15 -1
+     (nil))
+
+;; // predicted unlikely by early return (on trees) predictor.
+
+(nil)
+
+;; Generating RTL for gimple basic block 16
+
+;; 
+
+(code_label 94 93 95 4 (nil) [0 uses])
+
+(note 95 94 0 NOTE_INSN_BASIC_BLOCK)
+
+;; _38 = fsync (fd_36(D));
+
+(insn 96 95 97 (set (reg:SI 100)
+        (mem/c:SI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                (const_int -36 [0xffffffffffffffdc])) [1 fd+0 S4 A32])) "tests/slow_fsync.cpp":22:15 -1
+     (nil))
+
+(insn 97 96 98 (set (reg:SI 5 di)
+        (reg:SI 100)) "tests/slow_fsync.cpp":22:15 -1
+     (nil))
+
+(call_insn 98 97 99 (set (reg:SI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("fsync") [flags 0x41]  <function_decl 0x741bf8ac8100 fsync>) [0 fsync S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":22:15 -1
+     (nil)
+    (expr_list:SI (use (reg:SI 5 di))
+        (nil)))
+
+(insn 99 98 0 (set (reg:SI 87 [ _6 ])
+        (reg:SI 0 ax)) "tests/slow_fsync.cpp":22:15 -1
+     (nil))
+
+;; _39 = _38;
+
+(nil)
+
+;; Generating RTL for gimple basic block 17
+
+;; <L19>:
+
+(code_label 100 99 101 8 (nil) [0 uses])
+
+(note 101 100 0 NOTE_INSN_BASIC_BLOCK)
+
+;; return _6;
+
+(insn 102 101 103 (set (reg:SI 89 [ <retval> ])
+        (reg:SI 87 [ _6 ])) "tests/slow_fsync.cpp":23:1 -1
+     (nil))
+
+(jump_insn 103 102 104 (set (pc)
+        (label_ref 0)) "tests/slow_fsync.cpp":23:1 -1
+     (nil))
+
+(barrier 104 103 0)
+
+
+try_optimize_cfg iteration 1
+
+Merging block 3 into block 2...
+Merged blocks 2 and 3.
+Merged 2 and 3 without moving.
+Removing jump 103.
+Merging block 19 into block 18...
+Merged blocks 18 and 19.
+Merged 18 and 19 without moving.
+
+
+try_optimize_cfg iteration 2
+
+fix_loop_structure: fixing up loops for function
+
+
+;;
+;; Full RTL generated for this function:
+;;
+(note 1 0 4 NOTE_INSN_DELETED)
+;; basic block 2, loop depth 0, maybe hot
+;;  prev block 0, next block 4, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       ENTRY (FALLTHRU)
+(note 4 1 2 2 [bb 2] NOTE_INSN_BASIC_BLOCK)
+(insn 2 4 3 2 (set (mem/c:SI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                (const_int -36 [0xffffffffffffffdc])) [1 fd+0 S4 A32])
+        (reg:SI 5 di [ fd ])) "tests/slow_fsync.cpp":6:35 -1
+     (nil))
+(note 3 2 6 2 NOTE_INSN_FUNCTION_BEG)
+(insn 6 3 7 2 (set (reg:DI 90)
+        (symbol_ref/f:DI ("*.LC0") [flags 0x2]  <var_decl 0x741bf8ac3ea0 *.LC0>)) "tests/slow_fsync.cpp":7:35 -1
+     (nil))
+(insn 7 6 8 2 (set (reg:DI 5 di)
+        (reg:DI 90)) "tests/slow_fsync.cpp":7:35 -1
+     (expr_list:REG_EQUAL (symbol_ref/f:DI ("*.LC0") [flags 0x2]  <var_decl 0x741bf8ac3ea0 *.LC0>)
+        (nil)))
+(call_insn 8 7 9 2 (set (reg:DI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("getenv") [flags 0x41]  <function_decl 0x741bf8a5da00 getenv>) [0 getenv S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":7:35 -1
+     (expr_list:REG_EH_REGION (const_int 0 [0])
+        (nil))
+    (expr_list:DI (use (reg:DI 5 di))
+        (nil)))
+(insn 9 8 10 2 (set (reg:DI 91)
+        (reg:DI 0 ax)) "tests/slow_fsync.cpp":7:35 -1
+     (nil))
+(insn 10 9 11 2 (set (mem/f/c:DI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                (const_int -24 [0xffffffffffffffe8])) [2 marker+0 S8 A64])
+        (reg:DI 91)) "tests/slow_fsync.cpp":7:35 -1
+     (nil))
+(insn 11 10 12 2 (set (reg:CCZ 17 flags)
+        (compare:CCZ (mem/f/c:DI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                    (const_int -24 [0xffffffffffffffe8])) [2 marker+0 S8 A64])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":8:14 -1
+     (nil))
+(jump_insn 12 11 13 2 (set (pc)
+        (if_then_else (eq (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 25)
+            (pc))) "tests/slow_fsync.cpp":8:14 -1
+     (nil)
+ -> 25)
+;;  succ:       4 (FALLTHRU)
+;;              6
+
+;; basic block 4, loop depth 0, maybe hot
+;;  prev block 2, next block 5, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       2 (FALLTHRU)
+(note 13 12 14 4 [bb 4] NOTE_INSN_BASIC_BLOCK)
+(insn 14 13 15 4 (set (reg:DI 92)
+        (mem/f/c:DI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                (const_int -24 [0xffffffffffffffe8])) [2 marker+0 S8 A64])) "tests/slow_fsync.cpp":8:23 discrim 1 -1
+     (nil))
+(insn 15 14 16 4 (set (reg:SI 4 si)
+        (const_int 0 [0])) "tests/slow_fsync.cpp":8:23 discrim 1 -1
+     (nil))
+(insn 16 15 17 4 (set (reg:DI 5 di)
+        (reg:DI 92)) "tests/slow_fsync.cpp":8:23 discrim 1 -1
+     (nil))
+(call_insn 17 16 18 4 (set (reg:SI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("access") [flags 0x41]  <function_decl 0x741bf8a93200 access>) [0 access S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":8:23 discrim 1 -1
+     (expr_list:REG_EH_REGION (const_int 0 [0])
+        (nil))
+    (expr_list:DI (use (reg:DI 5 di))
+        (expr_list:SI (use (reg:SI 4 si))
+            (nil))))
+(insn 18 17 19 4 (set (reg:SI 82 [ _1 ])
+        (reg:SI 0 ax)) "tests/slow_fsync.cpp":8:23 discrim 1 -1
+     (nil))
+(insn 19 18 20 4 (set (reg:CCZ 17 flags)
+        (compare:CCZ (reg:SI 82 [ _1 ])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":8:14 discrim 1 -1
+     (nil))
+(jump_insn 20 19 21 4 (set (pc)
+        (if_then_else (ne (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 25)
+            (pc))) "tests/slow_fsync.cpp":8:14 discrim 1 -1
+     (nil)
+ -> 25)
+;;  succ:       5 (FALLTHRU)
+;;              6
+
+;; basic block 5, loop depth 0, maybe hot
+;;  prev block 4, next block 6, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       4 (FALLTHRU)
+(note 21 20 22 5 [bb 5] NOTE_INSN_BASIC_BLOCK)
+(insn 22 21 23 5 (set (reg:QI 85 [ iftmp.1_4 ])
+        (const_int 1 [0x1])) "tests/slow_fsync.cpp":8:14 discrim 3 -1
+     (nil))
+(jump_insn 23 22 24 5 (set (pc)
+        (label_ref 28)) "tests/slow_fsync.cpp":8:14 -1
+     (nil)
+ -> 28)
+;;  succ:       7 tests/slow_fsync.cpp:8:14
+
+(barrier 24 23 25)
+;; basic block 6, loop depth 0, maybe hot
+;;  prev block 5, next block 7, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       2
+;;              4
+(code_label 25 24 26 6 2 (nil) [2 uses])
+(note 26 25 27 6 [bb 6] NOTE_INSN_BASIC_BLOCK)
+(insn 27 26 28 6 (set (reg:QI 85 [ iftmp.1_4 ])
+        (const_int 0 [0])) "tests/slow_fsync.cpp":8:14 discrim 4 -1
+     (nil))
+;;  succ:       7 (FALLTHRU)
+
+;; basic block 7, loop depth 0, maybe hot
+;;  prev block 6, next block 8, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       5 tests/slow_fsync.cpp:8:14
+;;              6 (FALLTHRU)
+(code_label 28 27 29 7 3 (nil) [1 uses])
+(note 29 28 30 7 [bb 7] NOTE_INSN_BASIC_BLOCK)
+(insn 30 29 31 7 (set (reg:CCZ 17 flags)
+        (compare:CCZ (reg:QI 85 [ iftmp.1_4 ])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":8:3 discrim 6 -1
+     (nil))
+(jump_insn 31 30 32 7 (set (pc)
+        (if_then_else (eq (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 94)
+            (pc))) "tests/slow_fsync.cpp":8:3 discrim 6 -1
+     (nil)
+ -> 94)
+;;  succ:       8 (FALLTHRU)
+;;              17
+
+;; basic block 8, loop depth 0, maybe hot
+;;  prev block 7, next block 9, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       7 (FALLTHRU)
+(note 32 31 33 8 [bb 8] NOTE_INSN_BASIC_BLOCK)
+(insn 33 32 34 8 (set (reg:DI 93)
+        (symbol_ref/f:DI ("*.LC1") [flags 0x2]  <var_decl 0x741bf8ac3f30 *.LC1>)) "tests/slow_fsync.cpp":9:38 -1
+     (nil))
+(insn 34 33 35 8 (set (reg:DI 5 di)
+        (reg:DI 93)) "tests/slow_fsync.cpp":9:38 -1
+     (expr_list:REG_EQUAL (symbol_ref/f:DI ("*.LC1") [flags 0x2]  <var_decl 0x741bf8ac3f30 *.LC1>)
+        (nil)))
+(call_insn 35 34 36 8 (set (reg:DI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("getenv") [flags 0x41]  <function_decl 0x741bf8a5da00 getenv>) [0 getenv S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":9:38 -1
+     (expr_list:REG_EH_REGION (const_int 0 [0])
+        (nil))
+    (expr_list:DI (use (reg:DI 5 di))
+        (nil)))
+(insn 36 35 37 8 (set (reg:DI 94)
+        (reg:DI 0 ax)) "tests/slow_fsync.cpp":9:38 -1
+     (nil))
+(insn 37 36 38 8 (set (mem/f/c:DI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                (const_int -16 [0xfffffffffffffff0])) [2 started+0 S8 A64])
+        (reg:DI 94)) "tests/slow_fsync.cpp":9:38 -1
+     (nil))
+(insn 38 37 39 8 (set (reg:CCZ 17 flags)
+        (compare:CCZ (mem/f/c:DI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                    (const_int -16 [0xfffffffffffffff0])) [2 started+0 S8 A64])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":10:5 -1
+     (nil))
+(jump_insn 39 38 40 8 (set (pc)
+        (if_then_else (eq (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 57)
+            (pc))) "tests/slow_fsync.cpp":10:5 -1
+     (nil)
+ -> 57)
+;;  succ:       9 (FALLTHRU)
+;;              11
+
+;; basic block 9, loop depth 0, maybe hot
+;;  prev block 8, next block 10, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       8 (FALLTHRU)
+(note 40 39 41 9 [bb 9] NOTE_INSN_BASIC_BLOCK)
+(insn 41 40 42 9 (set (reg:DI 95)
+        (mem/f/c:DI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                (const_int -16 [0xfffffffffffffff0])) [2 started+0 S8 A64])) "tests/slow_fsync.cpp":11:24 -1
+     (nil))
+(insn 42 41 43 9 (set (reg:SI 1 dx)
+        (const_int 384 [0x180])) "tests/slow_fsync.cpp":11:24 -1
+     (nil))
+(insn 43 42 44 9 (set (reg:SI 4 si)
+        (const_int 577 [0x241])) "tests/slow_fsync.cpp":11:24 -1
+     (nil))
+(insn 44 43 45 9 (set (reg:DI 5 di)
+        (reg:DI 95)) "tests/slow_fsync.cpp":11:24 -1
+     (nil))
+(insn 45 44 46 9 (set (reg:QI 0 ax)
+        (const_int 0 [0])) "tests/slow_fsync.cpp":11:24 -1
+     (nil))
+(call_insn 46 45 47 9 (set (reg:SI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("open") [flags 0x41]  <function_decl 0x741bf8a88600 open>) [0 open S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":11:24 -1
+     (nil)
+    (expr_list (use (reg:QI 0 ax))
+        (expr_list:DI (use (reg:DI 5 di))
+            (expr_list:SI (use (reg:SI 4 si))
+                (expr_list:SI (use (reg:SI 1 dx))
+                    (nil))))))
+(insn 47 46 48 9 (set (reg:SI 88 [ _24 ])
+        (reg:SI 0 ax)) "tests/slow_fsync.cpp":11:24 -1
+     (nil))
+(insn 48 47 51 9 (set (mem/c:SI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                (const_int -28 [0xffffffffffffffe4])) [1 signal+0 S4 A32])
+        (reg:SI 88 [ _24 ])) "tests/slow_fsync.cpp":11:24 discrim 1 -1
+     (nil))
+(insn 51 48 52 9 (set (reg:CCGOC 17 flags)
+        (compare:CCGOC (mem/c:SI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                    (const_int -28 [0xffffffffffffffe4])) [1 signal+0 S4 A32])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":12:7 -1
+     (nil))
+(jump_insn 52 51 53 9 (set (pc)
+        (if_then_else (lt (reg:CCGOC 17 flags)
+                (const_int 0 [0]))
+            (label_ref 57)
+            (pc))) "tests/slow_fsync.cpp":12:7 -1
+     (nil)
+ -> 57)
+;;  succ:       10 (FALLTHRU)
+;;              11
+
+;; basic block 10, loop depth 0, maybe hot
+;;  prev block 9, next block 11, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       9 (FALLTHRU)
+(note 53 52 54 10 [bb 10] NOTE_INSN_BASIC_BLOCK)
+(insn 54 53 55 10 (set (reg:SI 96)
+        (mem/c:SI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                (const_int -28 [0xffffffffffffffe4])) [1 signal+0 S4 A32])) "tests/slow_fsync.cpp":13:14 -1
+     (nil))
+(insn 55 54 56 10 (set (reg:SI 5 di)
+        (reg:SI 96)) "tests/slow_fsync.cpp":13:14 -1
+     (nil))
+(call_insn 56 55 57 10 (set (reg:SI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("close") [flags 0x41]  <function_decl 0x741bf8a93900 close>) [0 close S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":13:14 -1
+     (nil)
+    (expr_list:SI (use (reg:SI 5 di))
+        (nil)))
+;;  succ:       11 (FALLTHRU)
+
+;; basic block 11, loop depth 0, maybe hot
+;;  prev block 10, next block 12, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       8
+;;              10 (FALLTHRU)
+;;              9
+(code_label 57 56 58 11 5 (nil) [2 uses])
+(note 58 57 59 11 [bb 11] NOTE_INSN_BASIC_BLOCK)
+(insn 59 58 60 11 (set (reg:SI 5 di)
+        (const_int 800000 [0xc3500])) "tests/slow_fsync.cpp":15:11 -1
+     (nil))
+(call_insn 60 59 61 11 (set (reg:SI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("usleep") [flags 0x41]  <function_decl 0x741bf8a99600 usleep>) [0 usleep S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":15:11 -1
+     (nil)
+    (expr_list:SI (use (reg:SI 5 di))
+        (nil)))
+(insn 61 60 62 11 (set (reg:DI 97)
+        (symbol_ref/f:DI ("*.LC2") [flags 0x2]  <var_decl 0x741bf8ae7000 *.LC2>)) "tests/slow_fsync.cpp":16:38 -1
+     (nil))
+(insn 62 61 63 11 (set (reg:DI 5 di)
+        (reg:DI 97)) "tests/slow_fsync.cpp":16:38 -1
+     (expr_list:REG_EQUAL (symbol_ref/f:DI ("*.LC2") [flags 0x2]  <var_decl 0x741bf8ae7000 *.LC2>)
+        (nil)))
+(call_insn 63 62 64 11 (set (reg:DI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("getenv") [flags 0x41]  <function_decl 0x741bf8a5da00 getenv>) [0 getenv S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":16:38 -1
+     (expr_list:REG_EH_REGION (const_int 0 [0])
+        (nil))
+    (expr_list:DI (use (reg:DI 5 di))
+        (nil)))
+(insn 64 63 65 11 (set (reg:DI 98)
+        (reg:DI 0 ax)) "tests/slow_fsync.cpp":16:38 -1
+     (nil))
+(insn 65 64 66 11 (set (mem/f/c:DI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                (const_int -8 [0xfffffffffffffff8])) [2 failure+0 S8 A64])
+        (reg:DI 98)) "tests/slow_fsync.cpp":16:38 -1
+     (nil))
+(insn 66 65 67 11 (set (reg:CCZ 17 flags)
+        (compare:CCZ (mem/f/c:DI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                    (const_int -8 [0xfffffffffffffff8])) [2 failure+0 S8 A64])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":17:17 -1
+     (nil))
+(jump_insn 67 66 68 11 (set (pc)
+        (if_then_else (eq (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 80)
+            (pc))) "tests/slow_fsync.cpp":17:17 -1
+     (nil)
+ -> 80)
+;;  succ:       12 (FALLTHRU)
+;;              14
+
+;; basic block 12, loop depth 0, maybe hot
+;;  prev block 11, next block 13, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       11 (FALLTHRU)
+(note 68 67 69 12 [bb 12] NOTE_INSN_BASIC_BLOCK)
+(insn 69 68 70 12 (set (reg:DI 99)
+        (mem/f/c:DI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                (const_int -8 [0xfffffffffffffff8])) [2 failure+0 S8 A64])) "tests/slow_fsync.cpp":17:26 discrim 1 -1
+     (nil))
+(insn 70 69 71 12 (set (reg:SI 4 si)
+        (const_int 0 [0])) "tests/slow_fsync.cpp":17:26 discrim 1 -1
+     (nil))
+(insn 71 70 72 12 (set (reg:DI 5 di)
+        (reg:DI 99)) "tests/slow_fsync.cpp":17:26 discrim 1 -1
+     (nil))
+(call_insn 72 71 73 12 (set (reg:SI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("access") [flags 0x41]  <function_decl 0x741bf8a93200 access>) [0 access S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":17:26 discrim 1 -1
+     (expr_list:REG_EH_REGION (const_int 0 [0])
+        (nil))
+    (expr_list:DI (use (reg:DI 5 di))
+        (expr_list:SI (use (reg:SI 4 si))
+            (nil))))
+(insn 73 72 74 12 (set (reg:SI 83 [ _2 ])
+        (reg:SI 0 ax)) "tests/slow_fsync.cpp":17:26 discrim 1 -1
+     (nil))
+(insn 74 73 75 12 (set (reg:CCZ 17 flags)
+        (compare:CCZ (reg:SI 83 [ _2 ])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":17:17 discrim 1 -1
+     (nil))
+(jump_insn 75 74 76 12 (set (pc)
+        (if_then_else (ne (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 80)
+            (pc))) "tests/slow_fsync.cpp":17:17 discrim 1 -1
+     (nil)
+ -> 80)
+;;  succ:       13 (FALLTHRU)
+;;              14
+
+;; basic block 13, loop depth 0, maybe hot
+;;  prev block 12, next block 14, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       12 (FALLTHRU)
+(note 76 75 77 13 [bb 13] NOTE_INSN_BASIC_BLOCK)
+(insn 77 76 78 13 (set (reg:QI 86 [ iftmp.3_5 ])
+        (const_int 1 [0x1])) "tests/slow_fsync.cpp":17:17 discrim 3 -1
+     (nil))
+(jump_insn 78 77 79 13 (set (pc)
+        (label_ref 83)) "tests/slow_fsync.cpp":17:17 -1
+     (nil)
+ -> 83)
+;;  succ:       15 tests/slow_fsync.cpp:17:17
+
+(barrier 79 78 80)
+;; basic block 14, loop depth 0, maybe hot
+;;  prev block 13, next block 15, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       11
+;;              12
+(code_label 80 79 81 14 6 (nil) [2 uses])
+(note 81 80 82 14 [bb 14] NOTE_INSN_BASIC_BLOCK)
+(insn 82 81 83 14 (set (reg:QI 86 [ iftmp.3_5 ])
+        (const_int 0 [0])) "tests/slow_fsync.cpp":17:17 discrim 4 -1
+     (nil))
+;;  succ:       15 (FALLTHRU)
+
+;; basic block 15, loop depth 0, maybe hot
+;;  prev block 14, next block 16, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       13 tests/slow_fsync.cpp:17:17
+;;              14 (FALLTHRU)
+(code_label 83 82 84 15 7 (nil) [1 uses])
+(note 84 83 85 15 [bb 15] NOTE_INSN_BASIC_BLOCK)
+(insn 85 84 86 15 (set (reg:CCZ 17 flags)
+        (compare:CCZ (reg:QI 86 [ iftmp.3_5 ])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":17:5 discrim 6 -1
+     (nil))
+(jump_insn 86 85 87 15 (set (pc)
+        (if_then_else (eq (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 94)
+            (pc))) "tests/slow_fsync.cpp":17:5 discrim 6 -1
+     (nil)
+ -> 94)
+;;  succ:       16 (FALLTHRU)
+;;              17
+
+;; basic block 16, loop depth 0, maybe hot
+;;  prev block 15, next block 17, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       15 (FALLTHRU)
+(note 87 86 88 16 [bb 16] NOTE_INSN_BASIC_BLOCK)
+(call_insn/u 88 87 89 16 (set (reg:DI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("__errno_location") [flags 0x41]  <function_decl 0x741bf8de9d00 __errno_location>) [0 __errno_location S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":18:7 -1
+     (expr_list:REG_EH_REGION (const_int 0 [0])
+        (nil))
+    (nil))
+(insn 89 88 90 16 (set (reg/f:DI 84 [ _3 ])
+        (reg:DI 0 ax)) "tests/slow_fsync.cpp":18:7 -1
+     (nil))
+(insn 90 89 91 16 (set (mem:SI (reg/f:DI 84 [ _3 ]) [1 *_3+0 S4 A32])
+        (const_int 5 [0x5])) "tests/slow_fsync.cpp":18:13 discrim 1 -1
+     (nil))
+(insn 91 90 92 16 (set (reg:SI 87 [ _6 ])
+        (const_int -1 [0xffffffffffffffff])) "tests/slow_fsync.cpp":19:15 -1
+     (nil))
+(jump_insn 92 91 93 16 (set (pc)
+        (label_ref 100)) "tests/slow_fsync.cpp":19:15 -1
+     (nil)
+ -> 100)
+;;  succ:       18 tests/slow_fsync.cpp:19:15
+
+(barrier 93 92 94)
+;; basic block 17, loop depth 0, maybe hot
+;;  prev block 16, next block 18, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       7
+;;              15
+(code_label 94 93 95 17 4 (nil) [2 uses])
+(note 95 94 96 17 [bb 17] NOTE_INSN_BASIC_BLOCK)
+(insn 96 95 97 17 (set (reg:SI 100)
+        (mem/c:SI (plus:DI (reg/f:DI 77 virtual-stack-vars)
+                (const_int -36 [0xffffffffffffffdc])) [1 fd+0 S4 A32])) "tests/slow_fsync.cpp":22:15 -1
+     (nil))
+(insn 97 96 98 17 (set (reg:SI 5 di)
+        (reg:SI 100)) "tests/slow_fsync.cpp":22:15 -1
+     (nil))
+(call_insn 98 97 99 17 (set (reg:SI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("fsync") [flags 0x41]  <function_decl 0x741bf8ac8100 fsync>) [0 fsync S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":22:15 -1
+     (nil)
+    (expr_list:SI (use (reg:SI 5 di))
+        (nil)))
+(insn 99 98 100 17 (set (reg:SI 87 [ _6 ])
+        (reg:SI 0 ax)) "tests/slow_fsync.cpp":22:15 -1
+     (nil))
+;;  succ:       18 (FALLTHRU) tests/slow_fsync.cpp:22:18
+
+;; basic block 18, loop depth 0, maybe hot
+;;  prev block 17, next block 1, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       16 tests/slow_fsync.cpp:19:15
+;;              17 (FALLTHRU) tests/slow_fsync.cpp:22:18
+(code_label 100 99 101 18 8 (nil) [1 uses])
+(note 101 100 102 18 [bb 18] NOTE_INSN_BASIC_BLOCK)
+(insn 102 101 106 18 (set (reg:SI 89 [ <retval> ])
+        (reg:SI 87 [ _6 ])) "tests/slow_fsync.cpp":23:1 -1
+     (nil))
+(insn 106 102 107 18 (set (reg/i:SI 0 ax)
+        (reg:SI 89 [ <retval> ])) "tests/slow_fsync.cpp":23:1 -1
+     (nil))
+(insn 107 106 0 18 (use (reg/i:SI 0 ax)) "tests/slow_fsync.cpp":23:1 -1
+     (nil))
+;;  succ:       EXIT [always]  (FALLTHRU)
+

@@ -1,4 +1,4 @@
-name: macOS CI
+name: CI
 on:
   push:
   pull_request:
@@ -10,7 +10,15 @@ concurrency:
   cancel-in-progress: true
 jobs:
   test:
-    runs-on: macos-latest
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+        include:
+          - os: macos-latest
+            node-version: '26'
+          - os: ubuntu-latest
+            node-version: '26'
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -19,6 +27,20 @@ jobs:
           python-version: '3.12'
       - uses: actions/setup-node@v4
         with:
-          node-version: '26'
-      - run: make test
-      - run: python3 benchmarks/run.py --requests 50
+          node-version: ${{ matrix.node-version }}
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y cmake g++
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --config Release -j$(nproc)
+      - name: Run unit tests
+        run: ctest --test-dir build --output-on-failure
+      - name: Run integration tests
+        run: |
+          python3 tests/integration.py ./build/velocache
+          python3 tests/resp_integration.py ./build/velocache
+          python3 tests/background_io.py ./build/velocache ./build/slow_fsync${{ runner.os == 'Linux' && '.so' || '.dylib' }}
+      - name: Run benchmark
+        run: python3 benchmarks/run.py --requests 50
