@@ -38,21 +38,25 @@ EventLoop::~EventLoop() {
 }
 
 void EventLoop::watch(int fd, bool readable, bool writable) {
-    struct kevent changes[4];
+    if (fd < 0) {
+        return;
+    }
+
+    struct kevent changes[2];
     int count = 0;
 
     if (readable) {
         EV_SET(&changes[count++], fd, EVFILT_READ,
-               EV_ADD | EV_ENABLE | EV_CLEAR, 0, 0, nullptr);
-    } else {
-        EV_SET(&changes[count++], fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+               EV_ADD | EV_ENABLE, 0, 0, nullptr);
     }
 
     if (writable) {
         EV_SET(&changes[count++], fd, EVFILT_WRITE,
-               EV_ADD | EV_ENABLE | EV_CLEAR, 0, 0, nullptr);
-    } else {
-        EV_SET(&changes[count++], fd, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
+               EV_ADD | EV_ENABLE, 0, 0, nullptr);
+    }
+
+    if (count == 0) {
+        return;
     }
 
     int result;
