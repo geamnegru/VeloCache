@@ -64,8 +64,11 @@ add_test(NAME background_worker_test COMMAND background_worker_test)
 
 # Slow fsync test library is macOS-only: it relies on Darwin interposition.
 if(APPLE)
-    add_library(slow_fsync MODULE tests/slow_fsync.cpp)
-    set_target_properties(slow_fsync PROPERTIES SUFFIX ".dylib")
+    add_library(slow_fsync SHARED tests/slow_fsync.cpp)
+    set_target_properties(slow_fsync PROPERTIES
+        PREFIX ""
+        SUFFIX ".dylib"
+    )
 
     add_test(NAME background_io_py
         COMMAND python3 ${CMAKE_SOURCE_DIR}/tests/background_io.py $<TARGET_FILE:velocache> $<TARGET_FILE:slow_fsync>
