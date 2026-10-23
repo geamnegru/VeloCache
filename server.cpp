@@ -160,8 +160,9 @@ public:
       close(item.first);
   }
 
-  void run(const volatile std::sig_atomic_t &stop_requested) {
-    while (!stop_requested) {
+void run(const volatile std::sig_atomic_t &stop_requested) {
+  while (!stop_requested) {
+    try {
       worker.drain();
       tick();
       process_pending_clients();
@@ -201,8 +202,12 @@ public:
         if (event.writable && connections.find(event.fd) != connections.end())
           flush(event.fd);
       }
+    } catch (const std::exception &error) {
+      std::cerr << "fatal server error: " << error.what() << '\n';
+      throw;
     }
   }
+}
 
 private:
   ServerOptions options;
