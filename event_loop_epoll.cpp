@@ -24,7 +24,6 @@ void EventLoop::watch(int fd, bool readable, bool writable) {
     uint32_t events = 0;
     if (readable) events |= EPOLLIN;
     if (writable) events |= EPOLLOUT;
-    events |= EPOLLET;
     ev.events = events;
     ev.data.fd = fd;
 

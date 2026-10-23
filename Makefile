@@ -6,10 +6,12 @@ ifeq ($(UNAME_S),Darwin)
     EVENT_LOOP_SRC = event_loop_kqueue.cpp
     SLOW_FSYNC_EXT = .dylib
     SLOW_FSYNC_FLAGS = -dynamiclib
+    HAS_SLOW_FSYNC = 1
 else
     EVENT_LOOP_SRC = event_loop_epoll.cpp
     SLOW_FSYNC_EXT = .so
     SLOW_FSYNC_FLAGS = -shared -fPIC
+    HAS_SLOW_FSYNC = 0
 endif
 
 SOURCES = main.cpp storage.cpp client_handler.cpp server.cpp resp.cpp background_worker.cpp event_loop.cpp
@@ -34,13 +36,15 @@ slow_fsync$(SLOW_FSYNC_EXT): tests/slow_fsync.cpp
 background_worker_test: tests/background_worker_test.cpp background_worker.cpp background_worker.h
 	$(CXX) $(CXXFLAGS) -I. tests/background_worker_test.cpp background_worker.cpp -o $@
 
-test: velocache storage_test resp_test background_worker_test slow_fsync$(SLOW_FSYNC_EXT)
+test: velocache storage_test resp_test background_worker_test
 	./storage_test
 	./resp_test
 	./background_worker_test
 	python3 tests/integration.py ./velocache
 	python3 tests/resp_integration.py ./velocache
+ifeq ($(HAS_SLOW_FSYNC),1)
 	python3 tests/background_io.py ./velocache ./slow_fsync$(SLOW_FSYNC_EXT)
+endif
 
 clean:
 	rm -f velocache storage_test resp_test background_worker_test slow_fsync.dylib slow_fsync.so
