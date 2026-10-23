@@ -1,0 +1,429 @@
+
+;; Function test_fsync (test_fsync, funcdef_no=15, decl_uid=4605, cgraph_uid=16, symbol_order=15)
+
+;; basic block 2, loop depth 0, maybe hot
+;;  prev block 0, next block 3, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       ENTRY (FALLTHRU)
+(note 4 0 2 2 [bb 2] NOTE_INSN_BASIC_BLOCK)
+(insn 2 4 3 2 (set (mem/c:SI (plus:DI (reg/f:DI 19 frame)
+                (const_int -36 [0xffffffffffffffdc])) [1 fd+0 S4 A32])
+        (reg:SI 5 di [ fd ])) "tests/slow_fsync.cpp":6:35 83 {*movsi_internal}
+     (nil))
+(note 3 2 6 2 NOTE_INSN_FUNCTION_BEG)
+(insn 6 3 7 2 (set (reg:DI 90)
+        (symbol_ref/f:DI ("*.LC0") [flags 0x2]  <var_decl 0x741bf8ac3ea0 *.LC0>)) "tests/slow_fsync.cpp":7:35 82 {*movdi_internal}
+     (nil))
+(insn 7 6 8 2 (set (reg:DI 5 di)
+        (reg:DI 90)) "tests/slow_fsync.cpp":7:35 82 {*movdi_internal}
+     (expr_list:REG_EQUAL (symbol_ref/f:DI ("*.LC0") [flags 0x2]  <var_decl 0x741bf8ac3ea0 *.LC0>)
+        (nil)))
+(call_insn 8 7 9 2 (set (reg:DI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("getenv") [flags 0x41]  <function_decl 0x741bf8a5da00 getenv>) [0 getenv S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":7:35 1013 {*call_value}
+     (expr_list:REG_EH_REGION (const_int 0 [0])
+        (nil))
+    (expr_list:DI (use (reg:DI 5 di))
+        (nil)))
+(insn 9 8 10 2 (set (reg:DI 91)
+        (reg:DI 0 ax)) "tests/slow_fsync.cpp":7:35 82 {*movdi_internal}
+     (nil))
+(insn 10 9 11 2 (set (mem/f/c:DI (plus:DI (reg/f:DI 19 frame)
+                (const_int -24 [0xffffffffffffffe8])) [2 marker+0 S8 A64])
+        (reg:DI 91)) "tests/slow_fsync.cpp":7:35 82 {*movdi_internal}
+     (nil))
+(insn 11 10 12 2 (set (reg:CCZ 17 flags)
+        (compare:CCZ (mem/f/c:DI (plus:DI (reg/f:DI 19 frame)
+                    (const_int -24 [0xffffffffffffffe8])) [2 marker+0 S8 A64])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":8:14 8 {*cmpdi_ccno_1}
+     (nil))
+(jump_insn 12 11 13 2 (set (pc)
+        (if_then_else (eq (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 25)
+            (pc))) "tests/slow_fsync.cpp":8:14 995 {*jcc}
+     (nil)
+ -> 25)
+;;  succ:       3 (FALLTHRU)
+;;              5
+
+;; basic block 3, loop depth 0, maybe hot
+;;  prev block 2, next block 4, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       2 (FALLTHRU)
+(note 13 12 14 3 [bb 3] NOTE_INSN_BASIC_BLOCK)
+(insn 14 13 15 3 (set (reg:DI 92)
+        (mem/f/c:DI (plus:DI (reg/f:DI 19 frame)
+                (const_int -24 [0xffffffffffffffe8])) [2 marker+0 S8 A64])) "tests/slow_fsync.cpp":8:23 discrim 1 82 {*movdi_internal}
+     (nil))
+(insn 15 14 16 3 (set (reg:SI 4 si)
+        (const_int 0 [0])) "tests/slow_fsync.cpp":8:23 discrim 1 83 {*movsi_internal}
+     (nil))
+(insn 16 15 17 3 (set (reg:DI 5 di)
+        (reg:DI 92)) "tests/slow_fsync.cpp":8:23 discrim 1 82 {*movdi_internal}
+     (nil))
+(call_insn 17 16 18 3 (set (reg:SI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("access") [flags 0x41]  <function_decl 0x741bf8a93200 access>) [0 access S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":8:23 discrim 1 1013 {*call_value}
+     (expr_list:REG_EH_REGION (const_int 0 [0])
+        (nil))
+    (expr_list:DI (use (reg:DI 5 di))
+        (expr_list:SI (use (reg:SI 4 si))
+            (nil))))
+(insn 18 17 19 3 (set (reg:SI 82 [ _1 ])
+        (reg:SI 0 ax)) "tests/slow_fsync.cpp":8:23 discrim 1 83 {*movsi_internal}
+     (nil))
+(insn 19 18 20 3 (set (reg:CCZ 17 flags)
+        (compare:CCZ (reg:SI 82 [ _1 ])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":8:14 discrim 1 7 {*cmpsi_ccno_1}
+     (nil))
+(jump_insn 20 19 21 3 (set (pc)
+        (if_then_else (ne (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 25)
+            (pc))) "tests/slow_fsync.cpp":8:14 discrim 1 995 {*jcc}
+     (nil)
+ -> 25)
+;;  succ:       4 (FALLTHRU)
+;;              5
+
+;; basic block 4, loop depth 0, maybe hot
+;;  prev block 3, next block 5, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       3 (FALLTHRU)
+(note 21 20 22 4 [bb 4] NOTE_INSN_BASIC_BLOCK)
+(insn 22 21 25 4 (set (reg:QI 85 [ iftmp.1_4 ])
+        (const_int 1 [0x1])) "tests/slow_fsync.cpp":8:14 discrim 3 85 {*movqi_internal}
+     (nil))
+;;  succ:       6 [always]  (FALLTHRU) tests/slow_fsync.cpp:8:14
+
+;; basic block 5, loop depth 0, maybe hot
+;;  prev block 4, next block 6, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       2
+;;              3
+(code_label 25 22 26 5 2 (nil) [2 uses])
+(note 26 25 27 5 [bb 5] NOTE_INSN_BASIC_BLOCK)
+(insn 27 26 28 5 (set (reg:QI 85 [ iftmp.1_4 ])
+        (const_int 0 [0])) "tests/slow_fsync.cpp":8:14 discrim 4 85 {*movqi_internal}
+     (nil))
+;;  succ:       6 (FALLTHRU)
+
+;; basic block 6, loop depth 0, maybe hot
+;;  prev block 5, next block 7, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       4 [always]  (FALLTHRU) tests/slow_fsync.cpp:8:14
+;;              5 (FALLTHRU)
+(code_label 28 27 29 6 3 (nil) [0 uses])
+(note 29 28 30 6 [bb 6] NOTE_INSN_BASIC_BLOCK)
+(insn 30 29 31 6 (set (reg:CCZ 17 flags)
+        (compare:CCZ (reg:QI 85 [ iftmp.1_4 ])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":8:3 discrim 6 5 {*cmpqi_ccno_1}
+     (nil))
+(jump_insn 31 30 32 6 (set (pc)
+        (if_then_else (eq (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 94)
+            (pc))) "tests/slow_fsync.cpp":8:3 discrim 6 995 {*jcc}
+     (nil)
+ -> 94)
+;;  succ:       7 (FALLTHRU)
+;;              16
+
+;; basic block 7, loop depth 0, maybe hot
+;;  prev block 6, next block 8, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       6 (FALLTHRU)
+(note 32 31 33 7 [bb 7] NOTE_INSN_BASIC_BLOCK)
+(insn 33 32 34 7 (set (reg:DI 93)
+        (symbol_ref/f:DI ("*.LC1") [flags 0x2]  <var_decl 0x741bf8ac3f30 *.LC1>)) "tests/slow_fsync.cpp":9:38 82 {*movdi_internal}
+     (nil))
+(insn 34 33 35 7 (set (reg:DI 5 di)
+        (reg:DI 93)) "tests/slow_fsync.cpp":9:38 82 {*movdi_internal}
+     (expr_list:REG_EQUAL (symbol_ref/f:DI ("*.LC1") [flags 0x2]  <var_decl 0x741bf8ac3f30 *.LC1>)
+        (nil)))
+(call_insn 35 34 36 7 (set (reg:DI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("getenv") [flags 0x41]  <function_decl 0x741bf8a5da00 getenv>) [0 getenv S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":9:38 1013 {*call_value}
+     (expr_list:REG_EH_REGION (const_int 0 [0])
+        (nil))
+    (expr_list:DI (use (reg:DI 5 di))
+        (nil)))
+(insn 36 35 37 7 (set (reg:DI 94)
+        (reg:DI 0 ax)) "tests/slow_fsync.cpp":9:38 82 {*movdi_internal}
+     (nil))
+(insn 37 36 38 7 (set (mem/f/c:DI (plus:DI (reg/f:DI 19 frame)
+                (const_int -16 [0xfffffffffffffff0])) [2 started+0 S8 A64])
+        (reg:DI 94)) "tests/slow_fsync.cpp":9:38 82 {*movdi_internal}
+     (nil))
+(insn 38 37 39 7 (set (reg:CCZ 17 flags)
+        (compare:CCZ (mem/f/c:DI (plus:DI (reg/f:DI 19 frame)
+                    (const_int -16 [0xfffffffffffffff0])) [2 started+0 S8 A64])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":10:5 8 {*cmpdi_ccno_1}
+     (nil))
+(jump_insn 39 38 40 7 (set (pc)
+        (if_then_else (eq (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 57)
+            (pc))) "tests/slow_fsync.cpp":10:5 995 {*jcc}
+     (nil)
+ -> 57)
+;;  succ:       8 (FALLTHRU)
+;;              10
+
+;; basic block 8, loop depth 0, maybe hot
+;;  prev block 7, next block 9, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       7 (FALLTHRU)
+(note 40 39 41 8 [bb 8] NOTE_INSN_BASIC_BLOCK)
+(insn 41 40 42 8 (set (reg:DI 95)
+        (mem/f/c:DI (plus:DI (reg/f:DI 19 frame)
+                (const_int -16 [0xfffffffffffffff0])) [2 started+0 S8 A64])) "tests/slow_fsync.cpp":11:24 82 {*movdi_internal}
+     (nil))
+(insn 42 41 43 8 (set (reg:SI 1 dx)
+        (const_int 384 [0x180])) "tests/slow_fsync.cpp":11:24 83 {*movsi_internal}
+     (nil))
+(insn 43 42 44 8 (set (reg:SI 4 si)
+        (const_int 577 [0x241])) "tests/slow_fsync.cpp":11:24 83 {*movsi_internal}
+     (nil))
+(insn 44 43 45 8 (set (reg:DI 5 di)
+        (reg:DI 95)) "tests/slow_fsync.cpp":11:24 82 {*movdi_internal}
+     (nil))
+(insn 45 44 46 8 (set (reg:QI 0 ax)
+        (const_int 0 [0])) "tests/slow_fsync.cpp":11:24 85 {*movqi_internal}
+     (nil))
+(call_insn 46 45 47 8 (set (reg:SI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("open") [flags 0x41]  <function_decl 0x741bf8a88600 open>) [0 open S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":11:24 1013 {*call_value}
+     (nil)
+    (expr_list (use (reg:QI 0 ax))
+        (expr_list:DI (use (reg:DI 5 di))
+            (expr_list:SI (use (reg:SI 4 si))
+                (expr_list:SI (use (reg:SI 1 dx))
+                    (nil))))))
+(insn 47 46 48 8 (set (reg:SI 88 [ _24 ])
+        (reg:SI 0 ax)) "tests/slow_fsync.cpp":11:24 83 {*movsi_internal}
+     (nil))
+(insn 48 47 51 8 (set (mem/c:SI (plus:DI (reg/f:DI 19 frame)
+                (const_int -28 [0xffffffffffffffe4])) [1 signal+0 S4 A32])
+        (reg:SI 88 [ _24 ])) "tests/slow_fsync.cpp":11:24 discrim 1 83 {*movsi_internal}
+     (nil))
+(insn 51 48 52 8 (set (reg:CCGOC 17 flags)
+        (compare:CCGOC (mem/c:SI (plus:DI (reg/f:DI 19 frame)
+                    (const_int -28 [0xffffffffffffffe4])) [1 signal+0 S4 A32])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":12:7 7 {*cmpsi_ccno_1}
+     (nil))
+(jump_insn 52 51 53 8 (set (pc)
+        (if_then_else (lt (reg:CCGOC 17 flags)
+                (const_int 0 [0]))
+            (label_ref 57)
+            (pc))) "tests/slow_fsync.cpp":12:7 995 {*jcc}
+     (nil)
+ -> 57)
+;;  succ:       9 (FALLTHRU)
+;;              10
+
+;; basic block 9, loop depth 0, maybe hot
+;;  prev block 8, next block 10, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       8 (FALLTHRU)
+(note 53 52 54 9 [bb 9] NOTE_INSN_BASIC_BLOCK)
+(insn 54 53 55 9 (set (reg:SI 96)
+        (mem/c:SI (plus:DI (reg/f:DI 19 frame)
+                (const_int -28 [0xffffffffffffffe4])) [1 signal+0 S4 A32])) "tests/slow_fsync.cpp":13:14 83 {*movsi_internal}
+     (nil))
+(insn 55 54 56 9 (set (reg:SI 5 di)
+        (reg:SI 96)) "tests/slow_fsync.cpp":13:14 83 {*movsi_internal}
+     (nil))
+(call_insn 56 55 57 9 (set (reg:SI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("close") [flags 0x41]  <function_decl 0x741bf8a93900 close>) [0 close S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":13:14 1013 {*call_value}
+     (nil)
+    (expr_list:SI (use (reg:SI 5 di))
+        (nil)))
+;;  succ:       10 (FALLTHRU)
+
+;; basic block 10, loop depth 0, maybe hot
+;;  prev block 9, next block 11, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       7
+;;              9 (FALLTHRU)
+;;              8
+(code_label 57 56 58 10 5 (nil) [2 uses])
+(note 58 57 59 10 [bb 10] NOTE_INSN_BASIC_BLOCK)
+(insn 59 58 60 10 (set (reg:SI 5 di)
+        (const_int 800000 [0xc3500])) "tests/slow_fsync.cpp":15:11 83 {*movsi_internal}
+     (nil))
+(call_insn 60 59 61 10 (set (reg:SI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("usleep") [flags 0x41]  <function_decl 0x741bf8a99600 usleep>) [0 usleep S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":15:11 1013 {*call_value}
+     (nil)
+    (expr_list:SI (use (reg:SI 5 di))
+        (nil)))
+(insn 61 60 62 10 (set (reg:DI 97)
+        (symbol_ref/f:DI ("*.LC2") [flags 0x2]  <var_decl 0x741bf8ae7000 *.LC2>)) "tests/slow_fsync.cpp":16:38 82 {*movdi_internal}
+     (nil))
+(insn 62 61 63 10 (set (reg:DI 5 di)
+        (reg:DI 97)) "tests/slow_fsync.cpp":16:38 82 {*movdi_internal}
+     (expr_list:REG_EQUAL (symbol_ref/f:DI ("*.LC2") [flags 0x2]  <var_decl 0x741bf8ae7000 *.LC2>)
+        (nil)))
+(call_insn 63 62 64 10 (set (reg:DI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("getenv") [flags 0x41]  <function_decl 0x741bf8a5da00 getenv>) [0 getenv S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":16:38 1013 {*call_value}
+     (expr_list:REG_EH_REGION (const_int 0 [0])
+        (nil))
+    (expr_list:DI (use (reg:DI 5 di))
+        (nil)))
+(insn 64 63 65 10 (set (reg:DI 98)
+        (reg:DI 0 ax)) "tests/slow_fsync.cpp":16:38 82 {*movdi_internal}
+     (nil))
+(insn 65 64 66 10 (set (mem/f/c:DI (plus:DI (reg/f:DI 19 frame)
+                (const_int -8 [0xfffffffffffffff8])) [2 failure+0 S8 A64])
+        (reg:DI 98)) "tests/slow_fsync.cpp":16:38 82 {*movdi_internal}
+     (nil))
+(insn 66 65 67 10 (set (reg:CCZ 17 flags)
+        (compare:CCZ (mem/f/c:DI (plus:DI (reg/f:DI 19 frame)
+                    (const_int -8 [0xfffffffffffffff8])) [2 failure+0 S8 A64])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":17:17 8 {*cmpdi_ccno_1}
+     (nil))
+(jump_insn 67 66 68 10 (set (pc)
+        (if_then_else (eq (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 80)
+            (pc))) "tests/slow_fsync.cpp":17:17 995 {*jcc}
+     (nil)
+ -> 80)
+;;  succ:       11 (FALLTHRU)
+;;              13
+
+;; basic block 11, loop depth 0, maybe hot
+;;  prev block 10, next block 12, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       10 (FALLTHRU)
+(note 68 67 69 11 [bb 11] NOTE_INSN_BASIC_BLOCK)
+(insn 69 68 70 11 (set (reg:DI 99)
+        (mem/f/c:DI (plus:DI (reg/f:DI 19 frame)
+                (const_int -8 [0xfffffffffffffff8])) [2 failure+0 S8 A64])) "tests/slow_fsync.cpp":17:26 discrim 1 82 {*movdi_internal}
+     (nil))
+(insn 70 69 71 11 (set (reg:SI 4 si)
+        (const_int 0 [0])) "tests/slow_fsync.cpp":17:26 discrim 1 83 {*movsi_internal}
+     (nil))
+(insn 71 70 72 11 (set (reg:DI 5 di)
+        (reg:DI 99)) "tests/slow_fsync.cpp":17:26 discrim 1 82 {*movdi_internal}
+     (nil))
+(call_insn 72 71 73 11 (set (reg:SI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("access") [flags 0x41]  <function_decl 0x741bf8a93200 access>) [0 access S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":17:26 discrim 1 1013 {*call_value}
+     (expr_list:REG_EH_REGION (const_int 0 [0])
+        (nil))
+    (expr_list:DI (use (reg:DI 5 di))
+        (expr_list:SI (use (reg:SI 4 si))
+            (nil))))
+(insn 73 72 74 11 (set (reg:SI 83 [ _2 ])
+        (reg:SI 0 ax)) "tests/slow_fsync.cpp":17:26 discrim 1 83 {*movsi_internal}
+     (nil))
+(insn 74 73 75 11 (set (reg:CCZ 17 flags)
+        (compare:CCZ (reg:SI 83 [ _2 ])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":17:17 discrim 1 7 {*cmpsi_ccno_1}
+     (nil))
+(jump_insn 75 74 76 11 (set (pc)
+        (if_then_else (ne (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 80)
+            (pc))) "tests/slow_fsync.cpp":17:17 discrim 1 995 {*jcc}
+     (nil)
+ -> 80)
+;;  succ:       12 (FALLTHRU)
+;;              13
+
+;; basic block 12, loop depth 0, maybe hot
+;;  prev block 11, next block 13, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       11 (FALLTHRU)
+(note 76 75 77 12 [bb 12] NOTE_INSN_BASIC_BLOCK)
+(insn 77 76 80 12 (set (reg:QI 86 [ iftmp.3_5 ])
+        (const_int 1 [0x1])) "tests/slow_fsync.cpp":17:17 discrim 3 85 {*movqi_internal}
+     (nil))
+;;  succ:       14 [always]  (FALLTHRU) tests/slow_fsync.cpp:17:17
+
+;; basic block 13, loop depth 0, maybe hot
+;;  prev block 12, next block 14, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       10
+;;              11
+(code_label 80 77 81 13 6 (nil) [2 uses])
+(note 81 80 82 13 [bb 13] NOTE_INSN_BASIC_BLOCK)
+(insn 82 81 83 13 (set (reg:QI 86 [ iftmp.3_5 ])
+        (const_int 0 [0])) "tests/slow_fsync.cpp":17:17 discrim 4 85 {*movqi_internal}
+     (nil))
+;;  succ:       14 (FALLTHRU)
+
+;; basic block 14, loop depth 0, maybe hot
+;;  prev block 13, next block 15, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       12 [always]  (FALLTHRU) tests/slow_fsync.cpp:17:17
+;;              13 (FALLTHRU)
+(code_label 83 82 84 14 7 (nil) [0 uses])
+(note 84 83 85 14 [bb 14] NOTE_INSN_BASIC_BLOCK)
+(insn 85 84 86 14 (set (reg:CCZ 17 flags)
+        (compare:CCZ (reg:QI 86 [ iftmp.3_5 ])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":17:5 discrim 6 5 {*cmpqi_ccno_1}
+     (nil))
+(jump_insn 86 85 87 14 (set (pc)
+        (if_then_else (eq (reg:CCZ 17 flags)
+                (const_int 0 [0]))
+            (label_ref 94)
+            (pc))) "tests/slow_fsync.cpp":17:5 discrim 6 995 {*jcc}
+     (nil)
+ -> 94)
+;;  succ:       15 (FALLTHRU)
+;;              16
+
+;; basic block 15, loop depth 0, maybe hot
+;;  prev block 14, next block 16, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       14 (FALLTHRU)
+(note 87 86 88 15 [bb 15] NOTE_INSN_BASIC_BLOCK)
+(call_insn/u 88 87 89 15 (set (reg:DI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("__errno_location") [flags 0x41]  <function_decl 0x741bf8de9d00 __errno_location>) [0 __errno_location S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":18:7 1013 {*call_value}
+     (expr_list:REG_EH_REGION (const_int 0 [0])
+        (nil))
+    (nil))
+(insn 89 88 90 15 (set (reg/f:DI 84 [ _3 ])
+        (reg:DI 0 ax)) "tests/slow_fsync.cpp":18:7 82 {*movdi_internal}
+     (nil))
+(insn 90 89 91 15 (set (mem:SI (reg/f:DI 84 [ _3 ]) [1 *_3+0 S4 A32])
+        (const_int 5 [0x5])) "tests/slow_fsync.cpp":18:13 discrim 1 83 {*movsi_internal}
+     (nil))
+(insn 91 90 94 15 (set (reg:SI 87 [ _6 ])
+        (const_int -1 [0xffffffffffffffff])) "tests/slow_fsync.cpp":19:15 83 {*movsi_internal}
+     (nil))
+;;  succ:       17 [always]  (FALLTHRU) tests/slow_fsync.cpp:19:15
+
+;; basic block 16, loop depth 0, maybe hot
+;;  prev block 15, next block 17, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       6
+;;              14
+(code_label 94 91 95 16 4 (nil) [2 uses])
+(note 95 94 96 16 [bb 16] NOTE_INSN_BASIC_BLOCK)
+(insn 96 95 97 16 (set (reg:SI 100)
+        (mem/c:SI (plus:DI (reg/f:DI 19 frame)
+                (const_int -36 [0xffffffffffffffdc])) [1 fd+0 S4 A32])) "tests/slow_fsync.cpp":22:15 83 {*movsi_internal}
+     (nil))
+(insn 97 96 98 16 (set (reg:SI 5 di)
+        (reg:SI 100)) "tests/slow_fsync.cpp":22:15 83 {*movsi_internal}
+     (nil))
+(call_insn 98 97 99 16 (set (reg:SI 0 ax)
+        (call (mem:QI (symbol_ref:DI ("fsync") [flags 0x41]  <function_decl 0x741bf8ac8100 fsync>) [0 fsync S1 A8])
+            (const_int 0 [0]))) "tests/slow_fsync.cpp":22:15 1013 {*call_value}
+     (nil)
+    (expr_list:SI (use (reg:SI 5 di))
+        (nil)))
+(insn 99 98 100 16 (set (reg:SI 87 [ _6 ])
+        (reg:SI 0 ax)) "tests/slow_fsync.cpp":22:15 83 {*movsi_internal}
+     (nil))
+;;  succ:       17 (FALLTHRU) tests/slow_fsync.cpp:22:18
+
+;; basic block 17, loop depth 0, maybe hot
+;;  prev block 16, next block 1, flags: (NEW, REACHABLE, RTL, VISITED)
+;;  pred:       15 [always]  (FALLTHRU) tests/slow_fsync.cpp:19:15
+;;              16 (FALLTHRU) tests/slow_fsync.cpp:22:18
+(code_label 100 99 101 17 8 (nil) [0 uses])
+(note 101 100 102 17 [bb 17] NOTE_INSN_BASIC_BLOCK)
+(insn 102 101 106 17 (set (reg:SI 89 [ <retval> ])
+        (reg:SI 87 [ _6 ])) "tests/slow_fsync.cpp":23:1 83 {*movsi_internal}
+     (nil))
+(insn 106 102 107 17 (set (reg/i:SI 0 ax)
+        (reg:SI 89 [ <retval> ])) "tests/slow_fsync.cpp":23:1 83 {*movsi_internal}
+     (nil))
+(insn 107 106 0 17 (use (reg/i:SI 0 ax)) "tests/slow_fsync.cpp":23:1 -1
+     (nil))
+;;  succ:       EXIT [always]  (FALLTHRU)
+

@@ -19,11 +19,14 @@ BackgroundWorker::BackgroundWorker() {
   try {
     for (int fd : sockets_) {
       int flags = fcntl(fd, F_GETFL, 0);
-      int enabled = 1;
       if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0 ||
-          fcntl(fd, F_SETFD, FD_CLOEXEC) < 0 ||
-          setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &enabled, sizeof(enabled)) < 0)
+          fcntl(fd, F_SETFD, FD_CLOEXEC) < 0)
         throw std::system_error(errno, std::generic_category(), "worker socket flags");
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
+      int enabled = 1;
+      if (setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &enabled, sizeof(enabled)) < 0)
+        throw std::system_error(errno, std::generic_category(), "SO_NOSIGPIPE");
+#endif
     }
     thread_ = std::thread(&BackgroundWorker::run, this);
   } catch (...) {
@@ -91,7 +94,11 @@ void BackgroundWorker::run() {
     char byte = 1;
     ssize_t sent;
     do {
-      sent = send(sockets_[1], &byte, 1, 0);
+      int flags = 0;
+#if defined(__linux__)
+      flags = MSG_NOSIGNAL;
+#endif
+      sent = send(sockets_[1], &byte, 1, flags);
     } while (sent < 0 && errno == EINTR);
     if (failed)
       return;
