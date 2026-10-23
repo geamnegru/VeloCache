@@ -26,6 +26,7 @@ else()
 endif()
 
 add_executable(velocache ${SOURCES})
+target_include_directories(velocache PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(velocache pthread)
 
 add_custom_target(make_test
@@ -39,6 +40,7 @@ add_executable(storage_test
     tests/storage_test.cpp
     storage.cpp
 )
+target_include_directories(storage_test PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(storage_test pthread)
 add_test(NAME storage_test COMMAND storage_test)
 
@@ -48,6 +50,7 @@ add_executable(resp_test
     client_handler.cpp
     storage.cpp
 )
+target_include_directories(resp_test PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(resp_test pthread)
 add_test(NAME resp_test COMMAND resp_test)
 
@@ -55,6 +58,7 @@ add_executable(background_worker_test
     tests/background_worker_test.cpp
     background_worker.cpp
 )
+target_include_directories(background_worker_test PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(background_worker_test pthread)
 add_test(NAME background_worker_test COMMAND background_worker_test)
 
