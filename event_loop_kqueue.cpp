@@ -38,18 +38,36 @@ EventLoop::~EventLoop() {
 }
 
 void EventLoop::watch(int fd, bool readable, bool writable) {
+    if (fd < 0) {
+        return;
+    }
+
     struct kevent changes[2];
-    EV_SET(&changes[0], fd, EVFILT_READ,
-           EV_ADD | (readable ? EV_ENABLE : EV_DISABLE), 0, 0, nullptr);
-    EV_SET(&changes[1], fd, EVFILT_WRITE,
-           EV_ADD | (writable ? EV_ENABLE : EV_DISABLE), 0, 0, nullptr);
+    int count = 0;
+
+    if (readable) {
+        EV_SET(&changes[count++], fd, EVFILT_READ,
+               EV_ADD | EV_ENABLE, 0, 0, nullptr);
+    }
+
+    if (writable) {
+        EV_SET(&changes[count++], fd, EVFILT_WRITE,
+               EV_ADD | EV_ENABLE, 0, 0, nullptr);
+    }
+
+    if (count == 0) {
+        return;
+    }
 
     int result;
     do {
-        result = kevent(queue_fd, changes, 2, nullptr, 0, nullptr);
+        result = kevent(queue_fd, changes, count, nullptr, 0, nullptr);
     } while (result == -1 && errno == EINTR);
 
     if (result == -1) {
+        if (errno == ENOENT || errno == EBADF) {
+            return;
+        }
         throw std::system_error(errno, std::generic_category(), "kevent watch");
     }
 }
@@ -79,8 +97,8 @@ std::vector<SocketEvent> EventLoop::wait(int timeout_ms) {
     }
 
     const int count = kevent(queue_fd, nullptr, 0, events.data(),
-                             static_cast<int>(events.size()),
-                             timeout_ms < 0 ? nullptr : &timeout);
+                            static_cast<int>(events.size()),
+                            timeout_ms < 0 ? nullptr : &timeout);
     if (count == -1) {
         if (errno == EINTR) {
             return {};
@@ -94,18 +112,19 @@ std::vector<SocketEvent> EventLoop::wait(int timeout_ms) {
     positions.reserve(static_cast<std::size_t>(count));
 
     for (int index = 0; index < count; ++index) {
-        const auto& event = events[static_cast<std::size_t>(index)];
+        const auto &event = events[static_cast<std::size_t>(index)];
         const int fd = static_cast<int>(event.ident);
         const auto entry = positions.emplace(fd, result.size());
         if (entry.second) {
             result.push_back({fd, false, false, false});
         }
 
-        auto& socket = result[entry.first->second];
+        auto &socket = result[entry.first->second];
         socket.readable = socket.readable || event.filter == EVFILT_READ;
         socket.writable = socket.writable || event.filter == EVFILT_WRITE;
         socket.failed = socket.failed || (event.flags & EV_ERROR) != 0 ||
-                        (event.filter == EVFILT_WRITE && (event.flags & EV_EOF) != 0);
+                        ((event.filter == EVFILT_READ || event.filter == EVFILT_WRITE) &&
+                         (event.flags & EV_EOF) != 0);
     }
 
     return result;

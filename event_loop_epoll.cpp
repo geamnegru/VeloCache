@@ -32,9 +32,9 @@ void EventLoop::watch(int fd, bool readable, bool writable) {
             if (epoll_ctl(queue_fd, EPOLL_CTL_MOD, fd, &ev) == -1) {
                 throw std::system_error(errno, std::generic_category(), "epoll_ctl mod");
             }
-        } else {
-            throw std::system_error(errno, std::generic_category(), "epoll_ctl add");
+            return;
         }
+        throw std::system_error(errno, std::generic_category(), "epoll_ctl add");
     }
 }
 
@@ -49,7 +49,12 @@ void EventLoop::remove(int fd) {
 std::vector<SocketEvent> EventLoop::wait(int timeout_ms) {
     std::array<struct epoll_event, 128> events;
 
-    const int count = epoll_wait(queue_fd, events.data(), static_cast<int>(events.size()), timeout_ms);
+    const int count = epoll_wait(
+        queue_fd,
+        events.data(),
+        static_cast<int>(events.size()),
+        timeout_ms);
+
     if (count == -1) {
         if (errno == EINTR) {
             return {};
@@ -63,14 +68,15 @@ std::vector<SocketEvent> EventLoop::wait(int timeout_ms) {
     positions.reserve(static_cast<std::size_t>(count));
 
     for (int index = 0; index < count; ++index) {
-        const auto& event = events[static_cast<std::size_t>(index)];
+        const auto &event = events[static_cast<std::size_t>(index)];
         const int fd = event.data.fd;
         const auto entry = positions.emplace(fd, result.size());
+
         if (entry.second) {
             result.push_back({fd, false, false, false});
         }
 
-        auto& socket = result[entry.first->second];
+        auto &socket = result[entry.first->second];
         socket.readable = socket.readable || (event.events & EPOLLIN) != 0;
         socket.writable = socket.writable || (event.events & EPOLLOUT) != 0;
         socket.failed = socket.failed || (event.events & (EPOLLERR | EPOLLHUP)) != 0;

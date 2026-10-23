@@ -1,806 +1,482 @@
 #include "server.h"
+
 #include "background_worker.h"
 #include "client_handler.h"
 #include "event_loop.h"
 #include "resp.h"
 #include "storage.h"
 
-#include <algorithm>
-#include <array>
+#include <arpa/inet.h>
 #include <cerrno>
-#include <chrono>
-#include <cstdint>
+#include <cstring>
 #include <fcntl.h>
-#include <iostream>
-#include <netdb.h>
 #include <netinet/in.h>
-#include <sstream>
-#include <stdexcept>
 #include <sys/socket.h>
-#include <system_error>
 #include <unistd.h>
+
+#include <algorithm>
+#include <deque>
+#include <memory>
+#include <optional>
+#include <sstream>
+#include <string>
 #include <unordered_map>
-#include <unordered_set>
-#include <utility>
 #include <vector>
 
-namespace {
-using Clock = std::chrono::steady_clock;
-constexpr std::size_t max_line = 4 * 1024 * 1024 + 256;
-constexpr std::size_t max_output = 64 * 1024 * 1024;
-constexpr std::size_t io_budget = 256 * 1024;
-
-class SocketHandle {
-public:
-  explicit SocketHandle(int value = -1) : fd(value) {}
-  ~SocketHandle() {
-    if (fd >= 0)
-      close(fd);
-  }
-  SocketHandle(const SocketHandle &) = delete;
-  SocketHandle &operator=(const SocketHandle &) = delete;
-  int get() const { return fd; }
-  int release() {
-    int result = fd;
-    fd = -1;
-    return result;
-  }
-
-private:
-  int fd;
-};
-
-[[noreturn]] void socket_error(const std::string &operation) {
-  throw std::system_error(errno, std::generic_category(), operation);
-}
-
-void configure_socket(int fd) {
-  int flags = fcntl(fd, F_GETFL, 0);
-  if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0 ||
-      fcntl(fd, F_SETFD, FD_CLOEXEC) < 0) {
-    socket_error("configure socket");
-  }
-#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
-  int enabled = 1;
-  if (setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &enabled, sizeof(enabled)) < 0)
-    socket_error("SO_NOSIGPIPE");
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
 #endif
-}
 
-sockaddr_in resolve_address(const std::string &host, int port) {
-  addrinfo hints{};
-  hints.ai_family = AF_INET;
-  hints.ai_socktype = SOCK_STREAM;
-  addrinfo *addresses = nullptr;
-  int result = getaddrinfo(host.c_str(), std::to_string(port).c_str(), &hints,
-                           &addresses);
-  if (result != 0)
-    throw std::runtime_error("Cannot resolve " + host + ": " + gai_strerror(result));
-  sockaddr_in address = *reinterpret_cast<sockaddr_in *>(addresses->ai_addr);
-  freeaddrinfo(addresses);
-  return address;
-}
-
-int create_listener(const ServerOptions &options) {
-  auto address = resolve_address(options.bind_host, options.port);
-  SocketHandle fd(socket(AF_INET, SOCK_STREAM, 0));
-  if (fd.get() < 0)
-    socket_error("socket");
-  configure_socket(fd.get());
-  int enabled = 1;
-  if (setsockopt(fd.get(), SOL_SOCKET, SO_REUSEADDR, &enabled, sizeof(enabled)) < 0)
-    socket_error("SO_REUSEADDR");
-  if (bind(fd.get(), reinterpret_cast<sockaddr *>(&address), sizeof(address)) < 0)
-    socket_error("bind");
-  if (listen(fd.get(), 128) < 0)
-    socket_error("listen");
-  return fd.release();
-}
-
-std::uint64_t parse_counter(const std::string &token) {
-  if (token.empty() || token.find_first_not_of("0123456789") != std::string::npos)
-    throw std::invalid_argument("Invalid replication counter");
-  try {
-    return std::stoull(token);
-  } catch (const std::exception &) {
-    throw std::invalid_argument("Replication counter overflow");
-  }
-}
-
-std::vector<std::string> fields(const std::string &line) {
-  std::stringstream stream(line);
-  std::vector<std::string> result;
-  std::string field;
-  while (stream >> field)
-    result.push_back(field);
-  return result;
-}
+namespace {
 
 enum class ConnectionKind { Client, Replica, Upstream };
-enum class ClientProtocol { Unknown, Inline, Resp };
 
 struct Connection {
+  int fd = -1;
   ConnectionKind kind = ConnectionKind::Client;
-  ClientProtocol protocol = ClientProtocol::Unknown;
-  std::string input;
-  std::string output;
-  std::size_t written = 0;
+  std::string read_buffer;
+  std::string write_buffer;
   bool close_after_write = false;
-  bool connecting = false;
-  bool peer_eof = false;
-  bool waiting = false;
-  std::uint64_t identity = 0;
-  Clock::time_point last_activity = Clock::now();
+  bool ready = true;
+  bool sync_handshake_sent = false;
+  bool snapshot_mode = false;
+  std::uint64_t snapshot_sequence = 0;
+  std::size_t snapshot_entries_remaining = 0;
+  std::vector<StorageEntry> snapshot_entries;
 };
 
-class Server {
-public:
-  explicit Server(const ServerOptions &configuration)
-      : options(configuration), storage(options.aof_path),
-        listener(create_listener(options)) {
-    if (is_replica())
-      master_address = resolve_address(options.master_host, options.master_port);
-    last_sequence = storage.snapshot().sequence;
-    loop.watch(listener.get(), true, false);
-    loop.watch(worker.notification_fd(), true, false);
-    std::cout << "Started at " << options.port << " ("
-              << (is_replica() ? "slave" : "master") << ", "
-#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
-              << "kqueue"
-#elif defined(__linux__)
-              << "epoll"
-#else
-              << "unknown"
+void ignore_sigpipe(int fd) {
+#ifdef __APPLE__
+  int value = 1;
+  (void)setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &value, sizeof(value));
 #endif
-              << ", AOF: " << options.aof_path << ")\n" << std::flush;
-  }
-
-  ~Server() {
-    for (const auto &item : connections)
-      close(item.first);
-  }
-
-  void run(const volatile std::sig_atomic_t &stop_requested) {
-    while (!stop_requested) {
-      worker.drain();
-      tick();
-      process_pending_clients();
-      auto events = loop.wait(pending_clients.empty() ? 100 : 0);
-      for (const auto &event : events) {
-        if (event.fd == listener.get() && event.readable)
-          accept_clients();
-      }
-      for (const auto &event : events) {
-        if (event.fd == listener.get())
-          continue;
-        if (event.fd == worker.notification_fd()) {
-          worker.drain();
-          continue;
-        }
-        if (connections.find(event.fd) == connections.end())
-          continue;
-        if (event.failed) {
-          disconnect(event.fd);
-          continue;
-        }
-        auto &connection = connections.at(event.fd);
-        if (connection.connecting) {
-          int error = 0;
-          socklen_t size = sizeof(error);
-          if (getsockopt(event.fd, SOL_SOCKET, SO_ERROR, &error, &size) < 0 ||
-              error != 0) {
-            disconnect(event.fd);
-            continue;
-          }
-          connection.connecting = false;
-          if (!queue(event.fd, "SYNC\n"))
-            continue;
-        }
-        if (event.readable)
-          read_connection(event.fd);
-        if (event.writable && connections.find(event.fd) != connections.end())
-          flush(event.fd);
-      }
-    }
-  }
-
-private:
-  ServerOptions options;
-  StorageEngine storage;
-  EventLoop loop;
-  BackgroundWorker worker;
-  SocketHandle listener;
-  std::unordered_map<int, Connection> connections;
-  std::unordered_set<int> pending_clients;
-  std::uint64_t next_identity = 0;
-  bool cleanup_pending = false;
-  sockaddr_in master_address{};
-  int upstream = -1;
-  bool replica_ready = false;
-  bool receiving_snapshot = false;
-  std::uint64_t last_sequence = 0;
-  StorageSnapshot pending_snapshot;
-  std::size_t expected_entries = 0;
-  std::size_t snapshot_bytes = 0;
-  std::unordered_set<std::string> snapshot_keys;
-  Clock::time_point retry_at = Clock::now();
-  Clock::time_point maintenance_at = Clock::now();
-  bool listener_paused = false;
-  Clock::time_point accept_retry_at = Clock::now();
-
-  bool is_replica() const { return !options.master_host.empty(); }
-
-  void disconnect(int fd) {
-    auto found = connections.find(fd);
-    if (found == connections.end())
-      return;
-    loop.remove(fd);
-    close(fd);
-    connections.erase(found);
-    pending_clients.erase(fd);
-    if (fd == upstream) {
-      upstream = -1;
-      replica_ready = false;
-      receiving_snapshot = false;
-      pending_snapshot = {};
-      snapshot_keys.clear();
-      retry_at = Clock::now() + std::chrono::milliseconds(500);
-    }
-  }
-
-  void watch(int fd) {
-    const auto &connection = connections.at(fd);
-    loop.watch(fd, !connection.close_after_write && !connection.connecting &&
-                       !connection.peer_eof && !connection.waiting,
-               connection.connecting || connection.written < connection.output.size());
-  }
-
-  bool queue(int fd, const std::string &data) {
-    auto found = connections.find(fd);
-    if (found == connections.end())
-      return false;
-    auto &connection = found->second;
-    if (data.size() > max_output ||
-        connection.output.size() - connection.written > max_output - data.size()) {
-      disconnect(fd);
-      return false;
-    }
-    if (connection.written != 0) {
-      connection.output.erase(0, connection.written);
-      connection.written = 0;
-    }
-    connection.output += data;
-    watch(fd);
-    return true;
-  }
-
-  void broadcast(const std::string &data) {
-    std::vector<int> replicas;
-    for (const auto &item : connections) {
-      if (item.second.kind == ConnectionKind::Replica)
-        replicas.push_back(item.first);
-    }
-    for (int fd : replicas)
-      queue(fd, data);
-  }
-
-  void tick() {
-    auto now = Clock::now();
-    if (listener_paused && now >= accept_retry_at) {
-      loop.watch(listener.get(), true, false);
-      listener_paused = false;
-    }
-    std::vector<int> stale;
-    for (const auto &item : connections) {
-      auto age = now - item.second.last_activity;
-      if (!item.second.waiting &&
-          ((item.second.kind == ConnectionKind::Client && age > std::chrono::seconds(30)) ||
-           (item.second.kind == ConnectionKind::Upstream && age > std::chrono::seconds(5))))
-        stale.push_back(item.first);
-    }
-    for (int fd : stale)
-      disconnect(fd);
-    if (is_replica() && upstream < 0 && now >= retry_at)
-      connect_master();
-    if (now >= maintenance_at) {
-      if (!cleanup_pending) {
-        cleanup_pending = worker.submit(1, [this] {
-          storage.clean_expired();
-          return [this] { cleanup_pending = false; };
-        });
-      }
-      if (!is_replica()) {
-        broadcast("HEARTBEAT " + std::to_string(last_sequence) + "\n");
-      }
-      maintenance_at = now + std::chrono::seconds(1);
-    }
-  }
-
-  void accept_clients() {
-    for (int count = 0; count < 128; ++count) {
-      SocketHandle fd(accept(listener.get(), nullptr, nullptr));
-      if (fd.get() < 0) {
-        if (errno == EINTR) {
-          --count;
-          continue;
-        }
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-          return;
-        if (errno == ECONNABORTED)
-          continue;
-        if (errno == EMFILE || errno == ENFILE || errno == ENOBUFS || errno == ENOMEM) {
-          loop.watch(listener.get(), false, false);
-          listener_paused = true;
-          accept_retry_at = Clock::now() + std::chrono::milliseconds(100);
-          return;
-        }
-        socket_error("accept");
-      }
-      if (connections.size() >= 4096)
-        continue;
-      configure_socket(fd.get());
-      loop.watch(fd.get(), true, false);
-      Connection connection;
-      connection.identity = ++next_identity;
-      connections.emplace(fd.get(), std::move(connection));
-      fd.release();
-    }
-  }
-
-  void connect_master() {
-    retry_at = Clock::now() + std::chrono::milliseconds(500);
-    SocketHandle fd(socket(AF_INET, SOCK_STREAM, 0));
-    if (fd.get() < 0)
-      socket_error("upstream socket");
-    configure_socket(fd.get());
-    int result = connect(fd.get(), reinterpret_cast<sockaddr *>(&master_address),
-                         sizeof(master_address));
-    if (result < 0 && errno != EINPROGRESS)
-      return;
-    Connection connection;
-    connection.kind = ConnectionKind::Upstream;
-    connection.identity = ++next_identity;
-    connection.connecting = result < 0;
-    loop.watch(fd.get(), !connection.connecting, connection.connecting);
-    connections.emplace(fd.get(), std::move(connection));
-    upstream = fd.release();
-    if (result == 0)
-      queue(upstream, "SYNC\n");
-  }
-
-  bool matches(int fd, std::uint64_t identity) const {
-    auto found = connections.find(fd);
-    return found != connections.end() && found->second.identity == identity;
-  }
-
-  void resume(int fd, std::uint64_t identity) {
-    if (!matches(fd, identity))
-      return;
-    auto &connection = connections.at(fd);
-    connection.waiting = false;
-    connection.last_activity = Clock::now();
-    if (!connection.input.empty() || connection.peer_eof)
-      pending_clients.insert(fd);
-    watch(fd);
-  }
-
-  void complete_command(int fd, std::uint64_t identity, CommandResult result,
-                        const std::string &wire, bool resp) {
-    if (result.mutation) {
-      last_sequence = result.mutation->sequence;
-      broadcast(wire);
-    }
-    if (!matches(fd, identity))
-      return;
-    auto &connection = connections.at(fd);
-    connection.waiting = false;
-    connection.close_after_write = !resp;
-    connection.last_activity = Clock::now();
-    if (queue(fd, result.response) && resp)
-      resume(fd, identity);
-  }
-
-  void submit_command(int fd, std::string command,
-                      std::vector<std::string> arguments, bool resp) {
-    auto &connection = connections.at(fd);
-    const auto identity = connection.identity;
-    const bool read_only = is_replica();
-    const bool ready = !read_only || replica_ready;
-    std::size_t bytes = resp_max_bulk_size + command.size() + 256;
-    for (const auto &argument : arguments)
-      bytes += argument.size();
-    connection.waiting = true;
-    if (!worker.submit(bytes, [this, fd, identity, read_only, ready, resp,
-                                command = std::move(command),
-                                arguments = std::move(arguments)] {
-          auto result = resp ? handle_resp_command(arguments, storage, read_only, ready)
-                             : handle_command(command, storage, read_only, ready);
-          auto wire = result.mutation ? encode_mutation(*result.mutation) : "";
-          return [this, fd, identity, resp, result = std::move(result),
-                    wire = std::move(wire)]() mutable {
-            complete_command(fd, identity, std::move(result), wire, resp);
-          };
-        })) {
-      complete_command(fd, identity,
-                       {resp ? resp_error("ERR background worker queue is full")
-                             : "ERR Background worker queue is full\n", std::nullopt},
-                       "", resp);
-    } else {
-      watch(fd);
-    }
-  }
-
-  void serve_client(int fd, std::string command) {
-    if (!command.empty() && command.back() == '\r')
-      command.pop_back();
-    auto &connection = connections.at(fd);
-    const auto identity = connection.identity;
-    connection.input.clear();
-    if (command == "SYNC" && !is_replica()) {
-      connection.waiting = true;
-      if (!worker.submit(max_output, [this, fd, identity] {
-            auto snapshot = storage.snapshot();
-            std::string output = "SNAP_BEGIN " + std::to_string(snapshot.sequence) +
-                                 " " + std::to_string(snapshot.entries.size()) + "\n";
-            for (const auto &entry : snapshot.entries) {
-              auto line = encode_mutation({snapshot.sequence, entry});
-              if (line.size() > max_output || output.size() > max_output - line.size())
-                return BackgroundWorker::Completion([this, fd, identity] {
-                  if (matches(fd, identity))
-                    disconnect(fd);
-                });
-              output += line;
-            }
-            output += "SNAP_END " + std::to_string(snapshot.sequence) + "\n";
-            return BackgroundWorker::Completion(
-                [this, fd, identity, output = std::move(output)] {
-                  if (!matches(fd, identity))
-                    return;
-                  auto &peer = connections.at(fd);
-                  peer.kind = ConnectionKind::Replica;
-                  peer.waiting = false;
-                  queue(fd, output);
-                });
-          })) {
-        disconnect(fd);
-      } else {
-        watch(fd);
-      }
-      return;
-    }
-    std::stringstream stream(command);
-    std::string directive;
-    stream >> directive;
-    if (directive == "PING") {
-      connection.close_after_write = true;
-      queue(fd, "PONG\n");
-      return;
-    }
-    submit_command(fd, std::move(command), {}, false);
-  }
-
-  void persist_replication(std::uint64_t sequence, std::size_t bytes,
-                           std::function<void()> operation, bool snapshot) {
-    const int fd = upstream;
-    const auto identity = connections.at(fd).identity;
-    connections.at(fd).waiting = true;
-    if (!worker.submit(bytes, [this, fd, identity, sequence, snapshot,
-                                operation = std::move(operation)] {
-          try {
-            operation();
-          } catch (const std::invalid_argument &) {
-            return BackgroundWorker::Completion([this, fd, identity] {
-              if (matches(fd, identity))
-                disconnect(fd);
-            });
-          }
-          return BackgroundWorker::Completion([this, fd, identity, sequence, snapshot] {
-            last_sequence = sequence;
-            if (!matches(fd, identity))
-              return;
-            if (snapshot) {
-              replica_ready = true;
-              std::cout << "Replica synchronized\n" << std::flush;
-            }
-            resume(fd, identity);
-          });
-        })) {
-      disconnect(fd);
-    } else {
-      watch(fd);
-    }
-  }
-
-  void receive_replication(const std::string &line) {
-    if (line.rfind("SNAP_BEGIN ", 0) == 0) {
-      auto tokens = fields(line);
-      if (tokens.size() != 3 || receiving_snapshot || replica_ready)
-        throw std::invalid_argument("Unexpected snapshot start");
-      pending_snapshot = {};
-      pending_snapshot.sequence = parse_counter(tokens[1]);
-      auto count = parse_counter(tokens[2]);
-      if (count > 1000000)
-        throw std::invalid_argument("Snapshot too large");
-      expected_entries = static_cast<std::size_t>(count);
-      snapshot_bytes = 0;
-      snapshot_keys.clear();
-      receiving_snapshot = true;
-      return;
-    }
-    if (line.rfind("SNAP_END ", 0) == 0) {
-      auto tokens = fields(line);
-      if (tokens.size() != 2 || !receiving_snapshot ||
-          parse_counter(tokens[1]) != pending_snapshot.sequence ||
-          pending_snapshot.entries.size() != expected_entries)
-        throw std::invalid_argument("Incomplete snapshot");
-      auto snapshot = std::move(pending_snapshot);
-      const auto sequence = snapshot.sequence;
-      pending_snapshot = {};
-      snapshot_keys.clear();
-      receiving_snapshot = false;
-      persist_replication(sequence, max_output,
-                          [this, snapshot = std::move(snapshot)] {
-                            storage.replace_snapshot(snapshot);
-                          }, true);
-      return;
-    }
-    if (line.rfind("HEARTBEAT ", 0) == 0) {
-      auto tokens = fields(line);
-      if (tokens.size() != 2 || !replica_ready ||
-          parse_counter(tokens[1]) != last_sequence)
-        throw std::invalid_argument("Invalid replication heartbeat");
-      return;
-    }
-    auto mutation = decode_mutation(line);
-    if (receiving_snapshot) {
-      if (pending_snapshot.entries.size() >= expected_entries ||
-          mutation.sequence != pending_snapshot.sequence ||
-          line.size() > max_output - snapshot_bytes ||
-          !snapshot_keys.insert(mutation.entry.key).second)
-        throw std::invalid_argument("Invalid snapshot entry");
-      snapshot_bytes += line.size();
-      pending_snapshot.entries.push_back(std::move(mutation.entry));
-    } else {
-      if (!replica_ready)
-        throw std::invalid_argument("Update before snapshot");
-      const auto sequence = mutation.sequence;
-      auto bytes = resp_max_bulk_size + mutation.entry.key.size() +
-                   mutation.entry.value.size() + 256;
-      persist_replication(sequence, bytes, [this, mutation = std::move(mutation)] {
-        storage.apply_replication(mutation);
-      }, false);
-    }
-  }
-
-  void protocol_error(int fd, const std::string &message) {
-    auto &connection = connections.at(fd);
-    connection.close_after_write = true;
-    connection.input.clear();
-    pending_clients.erase(fd);
-    queue(fd, resp_error("ERR Protocol error: " + message));
-  }
-
-  void finish_input(int fd) {
-    auto &connection = connections.at(fd);
-    if (!connection.peer_eof)
-      return;
-    connection.close_after_write = true;
-    pending_clients.erase(fd);
-    if (connection.output.empty())
-      disconnect(fd);
-    else
-      watch(fd);
-  }
-
-  void process_client_input(int fd, std::size_t &budget) {
-    while (connections.find(fd) != connections.end()) {
-      auto &connection = connections.at(fd);
-      if (connection.waiting)
-        return;
-      if (connection.input.empty()) {
-        finish_input(fd);
-        return;
-      }
-      if (connection.protocol == ClientProtocol::Unknown) {
-        auto first = connection.input.front();
-        connection.protocol = first == '*' || first == '$' || first == '+' ||
-                                      first == '-' || first == ':'
-                                  ? ClientProtocol::Resp
-                                  : ClientProtocol::Inline;
-      }
-      if (connection.protocol == ClientProtocol::Inline) {
-        auto end = connection.input.find('\n');
-        if (end != std::string::npos) {
-          if (end > max_line)
-            disconnect(fd);
-          else
-            serve_client(fd, connection.input.substr(0, end));
-        } else if (connection.input.size() > max_line) {
-          disconnect(fd);
-        } else if (connection.peer_eof) {
-          serve_client(fd, connection.input);
-        }
-        return;
-      }
-      if (budget == 0) {
-        pending_clients.insert(fd);
-        return;
-      }
-      auto parsed = parse_resp_request(connection.input);
-      if (parsed.status == RespParseStatus::Incomplete) {
-        if (connection.peer_eof)
-          protocol_error(fd, "incomplete request");
-        return;
-      }
-      if (parsed.status == RespParseStatus::Error) {
-        protocol_error(fd, parsed.error);
-        return;
-      }
-      connection.input.erase(0, parsed.consumed);
-      --budget;
-      const auto &directive = parsed.arguments.front();
-      bool ping = directive.size() == 4;
-      const std::string expected = "PING";
-      for (std::size_t i = 0; ping && i < directive.size(); ++i) {
-        char byte = directive[i];
-        if (byte >= 'a' && byte <= 'z')
-          byte -= 'a' - 'A';
-        ping = byte == expected[i];
-      }
-      if (ping) {
-        auto result = handle_resp_command(parsed.arguments, storage, is_replica(),
-                                          !is_replica() || replica_ready);
-        if (!queue(fd, result.response))
-          return;
-      } else {
-        submit_command(fd, "", std::move(parsed.arguments), true);
-        return;
-      }
-    }
-  }
-
-  void process_pending_clients() {
-    std::vector<int> pending(pending_clients.begin(), pending_clients.end());
-    for (int fd : pending) {
-      pending_clients.erase(fd);
-      auto found = connections.find(fd);
-      if (found == connections.end() || found->second.close_after_write ||
-          found->second.waiting)
-        continue;
-      if (found->second.kind == ConnectionKind::Upstream) {
-        process_replication_input(fd);
-      } else {
-        std::size_t budget = 64;
-        process_client_input(fd, budget);
-      }
-    }
-  }
-
-  void process_replication_input(int fd) {
-    std::size_t budget = 64;
-    while (connections.find(fd) != connections.end()) {
-      auto &connection = connections.at(fd);
-      if (connection.waiting)
-        return;
-      auto position = connection.input.find('\n');
-      if (position == std::string::npos) {
-        if (connection.input.size() > max_line)
-          disconnect(fd);
-        return;
-      }
-      if (position > max_line) {
-        disconnect(fd);
-        return;
-      }
-      if (budget-- == 0) {
-        pending_clients.insert(fd);
-        return;
-      }
-      std::string line = connection.input.substr(0, position);
-      connection.input.erase(0, position + 1);
-      try {
-        receive_replication(line);
-      } catch (const std::invalid_argument &error) {
-        std::cerr << "Replication resync: " << error.what() << '\n';
-        disconnect(fd);
-        return;
-      }
-    }
-  }
-
-  void read_connection(int fd) {
-    std::array<char, 8192> buffer{};
-    std::size_t consumed = 0;
-    std::size_t command_budget = 64;
-    while (consumed < io_budget && connections.find(fd) != connections.end()) {
-      auto &connection = connections.at(fd);
-      if (connection.waiting)
-        return;
-      auto count = recv(fd, buffer.data(), buffer.size(), 0);
-      if (count < 0) {
-        if (errno == EINTR)
-          continue;
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-          return;
-        disconnect(fd);
-        return;
-      }
-      if (count == 0) {
-        if (connection.kind == ConnectionKind::Client) {
-          connection.peer_eof = true;
-          process_client_input(fd, command_budget);
-          if (connections.find(fd) != connections.end())
-            watch(fd);
-        } else {
-          disconnect(fd);
-        }
-        return;
-      }
-      consumed += static_cast<std::size_t>(count);
-      connection.last_activity = Clock::now();
-      if (connection.kind == ConnectionKind::Replica) {
-        disconnect(fd);
-        return;
-      }
-      connection.input.append(buffer.data(), static_cast<std::size_t>(count));
-      if (connection.kind == ConnectionKind::Client) {
-        process_client_input(fd, command_budget);
-        auto found = connections.find(fd);
-        if (found == connections.end() || found->second.close_after_write ||
-            found->second.kind != ConnectionKind::Client || found->second.waiting ||
-            command_budget == 0)
-          return;
-        continue;
-      }
-      process_replication_input(fd);
-      if (connections.find(fd) == connections.end() || connections.at(fd).waiting)
-        return;
-    }
-  }
-
-  void flush(int fd) {
-    auto &connection = connections.at(fd);
-    std::size_t sent = 0;
-    while (connection.written < connection.output.size() && sent < io_budget) {
-      auto remaining = std::min(connection.output.size() - connection.written,
-                                io_budget - sent);
-      int flags = 0;
-#if defined(__linux__)
-      flags = MSG_NOSIGNAL;
-#endif
-      auto count = send(fd, connection.output.data() + connection.written,
-                        remaining, flags);
-      if (count < 0) {
-        if (errno == EINTR)
-          continue;
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-          break;
-        disconnect(fd);
-        return;
-      }
-      if (count == 0) {
-        disconnect(fd);
-        return;
-      }
-      connection.written += static_cast<std::size_t>(count);
-      sent += static_cast<std::size_t>(count);
-      connection.last_activity = Clock::now();
-    }
-    if (connection.written == connection.output.size()) {
-      connection.output.clear();
-      connection.written = 0;
-      if (connection.close_after_write) {
-        disconnect(fd);
-        return;
-      }
-    }
-    watch(fd);
-  }
-};
 }
+
+bool set_nonblocking(int fd) {
+  const int flags = fcntl(fd, F_GETFL, 0);
+  if (flags < 0) {
+    return false;
+  }
+  if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+    return false;
+  }
+  return true;
+}
+
+void close_fd(int &fd) {
+  if (fd >= 0) {
+    ::close(fd);
+    fd = -1;
+  }
+}
+
+void disconnect_connection(std::unordered_map<int, Connection> &connections, int fd) {
+  auto it = connections.find(fd);
+  if (it != connections.end()) {
+    close_fd(it->second.fd);
+    connections.erase(it);
+  }
+}
+
+std::optional<std::string> take_line(std::string &buffer) {
+  const auto newline = buffer.find('\n');
+  if (newline == std::string::npos) {
+    return std::nullopt;
+  }
+  std::string line = buffer.substr(0, newline);
+  if (!line.empty() && line.back() == '\r') {
+    line.pop_back();
+  }
+  buffer.erase(0, newline + 1);
+  return line;
+}
+
+int make_listener(const std::string &host, int port) {
+  int fd = ::socket(AF_INET, SOCK_STREAM, 0);
+  if (fd < 0) {
+    throw std::runtime_error(std::string("socket: ") + std::strerror(errno));
+  }
+
+  ignore_sigpipe(fd);
+
+  int yes = 1;
+  if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0) {
+    close_fd(fd);
+    throw std::runtime_error(std::string("setsockopt: ") + std::strerror(errno));
+  }
+
+  sockaddr_in address{};
+  address.sin_family = AF_INET;
+  address.sin_port = htons(static_cast<uint16_t>(port));
+  if (inet_pton(AF_INET, host.c_str(), &address.sin_addr) != 1) {
+    close_fd(fd);
+    throw std::runtime_error("Invalid bind address");
+  }
+
+  if (::bind(fd, reinterpret_cast<sockaddr *>(&address), sizeof(address)) < 0) {
+    close_fd(fd);
+    throw std::runtime_error(std::string("bind: ") + std::strerror(errno));
+  }
+
+  if (::listen(fd, 128) < 0) {
+    close_fd(fd);
+    throw std::runtime_error(std::string("listen: ") + std::strerror(errno));
+  }
+
+  if (!set_nonblocking(fd)) {
+    close_fd(fd);
+    throw std::runtime_error(std::string("fcntl: ") + std::strerror(errno));
+  }
+
+  return fd;
+}
+
+void queue_output(Connection &connection, const std::string &data) {
+  if (!data.empty()) {
+    connection.write_buffer.append(data);
+  }
+}
+
+void flush_connection(EventLoop &loop, Connection &connection) {
+  while (!connection.write_buffer.empty()) {
+    const auto to_send = std::min<std::size_t>(connection.write_buffer.size(), 65536);
+    const ssize_t sent = ::send(connection.fd, connection.write_buffer.data(), to_send, MSG_NOSIGNAL);
+    if (sent < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        break;
+      }
+      connection.close_after_write = true;
+      break;
+    }
+    if (sent == 0) {
+      connection.close_after_write = true;
+      break;
+    }
+    connection.write_buffer.erase(0, static_cast<std::size_t>(sent));
+  }
+  loop.watch(connection.fd, true, !connection.write_buffer.empty());
+  if (connection.close_after_write && connection.write_buffer.empty()) {
+    connection.write_buffer.clear();
+    close_fd(connection.fd);
+  }
+}
+
+bool read_into_buffer(Connection &connection) {
+  char chunk[65536];
+  while (true) {
+    const ssize_t received = ::recv(connection.fd, chunk, sizeof(chunk), 0);
+    if (received > 0) {
+      connection.read_buffer.append(chunk, static_cast<std::size_t>(received));
+      continue;
+    }
+    if (received == 0) {
+      return false;
+    }
+    if (errno == EINTR) {
+      continue;
+    }
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      return true;
+    }
+    return false;
+  }
+}
+
+void queue_replica_updates(std::unordered_map<int, Connection> &connections,
+                           const StorageMutation &mutation) {
+  const std::string payload = encode_mutation(mutation);
+  for (auto &entry : connections) {
+    auto &connection = entry.second;
+    if (connection.kind == ConnectionKind::Replica && connection.sync_handshake_sent) {
+      queue_output(connection, payload);
+    }
+  }
+}
+
+void send_snapshot_to_replica(Connection &connection, StorageEngine &storage) {
+  auto snapshot = storage.snapshot();
+  std::string payload;
+  payload += "SNAP_BEGIN " + std::to_string(snapshot.sequence) + " " +
+              std::to_string(snapshot.entries.size()) + "\n";
+  for (const auto &entry : snapshot.entries) {
+    payload += encode_mutation(StorageMutation{snapshot.sequence, entry});
+  }
+  payload += "SNAP_END " + std::to_string(snapshot.sequence) + "\n";
+  queue_output(connection, payload);
+}
+
+void process_replica_upstream(Connection &connection, StorageEngine &storage,
+                              bool &replica_ready) {
+  while (true) {
+    const std::optional<std::string> line = take_line(connection.read_buffer);
+    if (!line) {
+      break;
+    }
+
+    if (line->rfind("SNAP_BEGIN ", 0) == 0) {
+      std::istringstream parser(*line);
+      std::string marker;
+      std::uint64_t sequence = 0;
+      std::size_t count = 0;
+      parser >> marker >> sequence >> count;
+      connection.snapshot_mode = true;
+      connection.snapshot_sequence = sequence;
+      connection.snapshot_entries_remaining = count;
+      connection.snapshot_entries.clear();
+      continue;
+    }
+
+    if (line->rfind("SNAP_END ", 0) == 0) {
+      std::istringstream parser(*line);
+      std::string marker;
+      std::uint64_t sequence = 0;
+      parser >> marker >> sequence;
+      if (connection.snapshot_mode && connection.snapshot_entries_remaining == 0 &&
+          sequence == connection.snapshot_sequence) {
+        StorageSnapshot snapshot{connection.snapshot_sequence, connection.snapshot_entries};
+        storage.replace_snapshot(snapshot);
+        connection.snapshot_mode = false;
+        connection.snapshot_entries.clear();
+        connection.ready = true;
+        replica_ready = true;
+      }
+      continue;
+    }
+
+    if (line->rfind("UPDATE ", 0) == 0) {
+      try {
+        const StorageMutation mutation = decode_mutation(*line + "\n");
+        if (connection.snapshot_mode) {
+          if (connection.snapshot_entries_remaining > 0) {
+            connection.snapshot_entries.push_back(mutation.entry);
+            --connection.snapshot_entries_remaining;
+          } else {
+            storage.apply_replication(mutation);
+          }
+        } else {
+          storage.apply_replication(mutation);
+        }
+        continue;
+      } catch (const std::exception &) {
+        throw;
+      }
+    }
+
+    if (line->empty()) {
+      continue;
+    }
+  }
+}
+
+void process_client_text(Connection &connection, StorageEngine &storage,
+                          bool read_only, bool ready,
+                          std::unordered_map<int, Connection> &connections,
+                          bool &replica_ready) {
+  while (true) {
+    const std::optional<std::string> line = take_line(connection.read_buffer);
+    if (!line) {
+      break;
+    }
+
+    if (*line == "SYNC") {
+      connection.kind = ConnectionKind::Replica;
+      connection.sync_handshake_sent = true;
+      connection.ready = true;
+      send_snapshot_to_replica(connection, storage);
+      continue;
+    }
+
+    const CommandResult result = handle_command(*line, storage, read_only, ready);
+    queue_output(connection, result.response);
+    if (result.mutation) {
+      queue_replica_updates(connections, *result.mutation);
+    }
+    connection.close_after_write = true;
+    break;
+  }
+  (void)replica_ready;
+}
+
+void process_client_resp(Connection &connection, StorageEngine &storage,
+                         bool read_only, bool ready,
+                         std::unordered_map<int, Connection> &connections) {
+  while (!connection.read_buffer.empty()) {
+    const auto parsed = parse_resp_request(connection.read_buffer);
+    if (parsed.status == RespParseStatus::Incomplete) {
+      break;
+    }
+    if (parsed.status == RespParseStatus::Error) {
+      queue_output(connection, resp_error("ERR Protocol error"));
+      connection.close_after_write = true;
+      break;
+    }
+
+    const auto command = handle_resp_command(parsed.arguments, storage, read_only, ready);
+    queue_output(connection, command.response);
+    if (command.mutation) {
+      queue_replica_updates(connections, *command.mutation);
+    }
+    connection.read_buffer.erase(0, parsed.consumed);
+  }
+}
+
+void handle_accepted_connection(int fd, std::unordered_map<int, Connection> &connections,
+                               EventLoop &loop) {
+  if (!set_nonblocking(fd)) {
+    close_fd(fd);
+    return;
+  }
+  Connection connection;
+  connection.fd = fd;
+  connection.kind = ConnectionKind::Client;
+  connection.ready = true;
+  connections.emplace(fd, connection);
+  loop.watch(fd, true, false);
+}
+
+void connect_upstream(const std::string &host, int port,
+                      std::unordered_map<int, Connection> &connections,
+                      EventLoop &loop) {
+  int fd = ::socket(AF_INET, SOCK_STREAM, 0);
+  if (fd < 0) {
+    throw std::runtime_error(std::string("socket: ") + std::strerror(errno));
+  }
+
+  ignore_sigpipe(fd);
+
+  sockaddr_in address{};
+  address.sin_family = AF_INET;
+  address.sin_port = htons(static_cast<uint16_t>(port));
+  if (inet_pton(AF_INET, host.c_str(), &address.sin_addr) != 1) {
+    close_fd(fd);
+    throw std::runtime_error("Invalid replica master address");
+  }
+
+  if (!set_nonblocking(fd)) {
+    close_fd(fd);
+    throw std::runtime_error(std::string("fcntl: ") + std::strerror(errno));
+  }
+
+  int result = ::connect(fd, reinterpret_cast<sockaddr *>(&address), sizeof(address));
+  if (result < 0 && errno != EINPROGRESS) {
+    close_fd(fd);
+    throw std::runtime_error(std::string("connect: ") + std::strerror(errno));
+  }
+
+  Connection connection;
+  connection.fd = fd;
+  connection.kind = ConnectionKind::Upstream;
+  connection.ready = false;
+  connection.write_buffer = "SYNC\n";
+  connections.emplace(fd, connection);
+  loop.watch(fd, true, !connection.write_buffer.empty());
+}
+
+}  // namespace
 
 void run_server(const ServerOptions &options,
                 const volatile std::sig_atomic_t &stop_requested) {
-  Server server(options);
-  server.run(stop_requested);
+  StorageEngine storage(options.aof_path);
+  const bool replica_mode = !options.master_host.empty();
+  auto loop = make_event_loop();
+  BackgroundWorker worker;
+
+  int listener_fd = make_listener(options.bind_host, options.port);
+  std::unordered_map<int, Connection> connections;
+  connections.emplace(listener_fd, Connection{listener_fd, ConnectionKind::Client, {}, {}, false, true, false, 0, 0, {}});
+  loop->watch(listener_fd, true, false);
+
+  if (replica_mode) {
+    connect_upstream(options.master_host, options.master_port, connections, *loop);
+  }
+
+  while (!stop_requested) {
+    const auto events = loop->wait(replica_mode ? 50 : 100);
+    for (const auto &event : events) {
+      if (event.fd == listener_fd) {
+        if (!event.readable) {
+          continue;
+        }
+        sockaddr_in client_address{};
+        socklen_t client_length = sizeof(client_address);
+        const int accepted = ::accept(listener_fd,
+                                     reinterpret_cast<sockaddr *>(&client_address),
+                                     &client_length);
+        if (accepted < 0) {
+          if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
+            continue;
+          }
+          throw std::runtime_error(std::string("accept: ") + std::strerror(errno));
+        }
+        handle_accepted_connection(accepted, connections, *loop);
+        continue;
+      }
+
+      auto it = connections.find(event.fd);
+      if (it == connections.end()) {
+        continue;
+      }
+
+      Connection &connection = it->second;
+      if (event.failed) {
+        disconnect_connection(connections, event.fd);
+        continue;
+      }
+
+      if (event.readable) {
+        if (!read_into_buffer(connection)) {
+          disconnect_connection(connections, event.fd);
+          continue;
+        }
+
+        if (connection.kind == ConnectionKind::Upstream) {
+          process_replica_upstream(connection, storage, connection.ready);
+          if (!connection.write_buffer.empty()) {
+            loop->watch(connection.fd, true, true);
+          }
+          continue;
+        }
+
+        if (connection.kind == ConnectionKind::Replica && !connection.sync_handshake_sent) {
+          connection.sync_handshake_sent = true;
+          send_snapshot_to_replica(connection, storage);
+          continue;
+        }
+
+        if (!connection.read_buffer.empty()) {
+          const bool this_is_resp = connection.read_buffer[0] == '*';
+          if (this_is_resp) {
+            process_client_resp(connection, storage,
+                                replica_mode, connection.ready,
+                                connections);
+          } else {
+            process_client_text(connection, storage,
+                                replica_mode, connection.ready,
+                                connections, connection.ready);
+          }
+          if (connection.close_after_write && connection.write_buffer.empty()) {
+            disconnect_connection(connections, connection.fd);
+          }
+        }
+      }
+
+      if (event.writable && !connection.write_buffer.empty()) {
+        flush_connection(*loop, connection);
+        if (connection.close_after_write && connection.write_buffer.empty()) {
+          disconnect_connection(connections, connection.fd);
+        }
+      }
+    }
+  }
+
+  for (auto &entry : connections) {
+    if (entry.second.fd >= 0) {
+      ::shutdown(entry.second.fd, SHUT_RDWR);
+      close_fd(entry.second.fd);
+    }
+  }
+  connections.clear();
 }
