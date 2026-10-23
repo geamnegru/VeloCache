@@ -23,6 +23,10 @@
 #include <unordered_map>
 #include <vector>
 
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+
 namespace {
 
 enum class ConnectionKind { Client, Replica, Upstream };
@@ -40,6 +44,13 @@ struct Connection {
   std::size_t snapshot_entries_remaining = 0;
   std::vector<StorageEntry> snapshot_entries;
 };
+
+void ignore_sigpipe(int fd) {
+#ifdef __APPLE__
+  int value = 1;
+  (void)setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &value, sizeof(value));
+#endif
+}
 
 bool set_nonblocking(int fd) {
   const int flags = fcntl(fd, F_GETFL, 0);
@@ -81,10 +92,12 @@ std::optional<std::string> take_line(std::string &buffer) {
 }
 
 int make_listener(const std::string &host, int port) {
-  const int fd = ::socket(AF_INET, SOCK_STREAM, 0);
+  int fd = ::socket(AF_INET, SOCK_STREAM, 0);
   if (fd < 0) {
     throw std::runtime_error(std::string("socket: ") + std::strerror(errno));
   }
+
+  ignore_sigpipe(fd);
 
   int yes = 1;
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0) {
@@ -173,7 +186,7 @@ bool read_into_buffer(Connection &connection) {
 }
 
 void queue_replica_updates(std::unordered_map<int, Connection> &connections,
-                          const StorageMutation &mutation) {
+                           const StorageMutation &mutation) {
   const std::string payload = encode_mutation(mutation);
   for (auto &entry : connections) {
     auto &connection = entry.second;
@@ -183,11 +196,11 @@ void queue_replica_updates(std::unordered_map<int, Connection> &connections,
   }
 }
 
-void send_snapshot_to_replica(Connection &connection, const StorageEngine &storage) {
+void send_snapshot_to_replica(Connection &connection, StorageEngine &storage) {
   auto snapshot = storage.snapshot();
   std::string payload;
   payload += "SNAP_BEGIN " + std::to_string(snapshot.sequence) + " " +
-             std::to_string(snapshot.entries.size()) + "\n";
+              std::to_string(snapshot.entries.size()) + "\n";
   for (const auto &entry : snapshot.entries) {
     payload += encode_mutation(StorageMutation{snapshot.sequence, entry});
   }
@@ -196,7 +209,7 @@ void send_snapshot_to_replica(Connection &connection, const StorageEngine &stora
 }
 
 void process_replica_upstream(Connection &connection, StorageEngine &storage,
-                             bool &replica_ready) {
+                              bool &replica_ready) {
   while (true) {
     const std::optional<std::string> line = take_line(connection.read_buffer);
     if (!line) {
@@ -259,9 +272,9 @@ void process_replica_upstream(Connection &connection, StorageEngine &storage,
 }
 
 void process_client_text(Connection &connection, StorageEngine &storage,
-                         bool read_only, bool ready,
-                         std::unordered_map<int, Connection> &connections,
-                         bool &replica_ready) {
+                          bool read_only, bool ready,
+                          std::unordered_map<int, Connection> &connections,
+                          bool &replica_ready) {
   while (true) {
     const std::optional<std::string> line = take_line(connection.read_buffer);
     if (!line) {
@@ -288,8 +301,8 @@ void process_client_text(Connection &connection, StorageEngine &storage,
 }
 
 void process_client_resp(Connection &connection, StorageEngine &storage,
-                        bool read_only, bool ready,
-                        std::unordered_map<int, Connection> &connections) {
+                         bool read_only, bool ready,
+                         std::unordered_map<int, Connection> &connections) {
   while (!connection.read_buffer.empty()) {
     const auto parsed = parse_resp_request(connection.read_buffer);
     if (parsed.status == RespParseStatus::Incomplete) {
@@ -327,10 +340,12 @@ void handle_accepted_connection(int fd, std::unordered_map<int, Connection> &con
 void connect_upstream(const std::string &host, int port,
                       std::unordered_map<int, Connection> &connections,
                       EventLoop &loop) {
-  const int fd = ::socket(AF_INET, SOCK_STREAM, 0);
+  int fd = ::socket(AF_INET, SOCK_STREAM, 0);
   if (fd < 0) {
     throw std::runtime_error(std::string("socket: ") + std::strerror(errno));
   }
+
+  ignore_sigpipe(fd);
 
   sockaddr_in address{};
   address.sin_family = AF_INET;
@@ -369,7 +384,7 @@ void run_server(const ServerOptions &options,
   auto loop = make_event_loop();
   BackgroundWorker worker;
 
-  const int listener_fd = make_listener(options.bind_host, options.port);
+  int listener_fd = make_listener(options.bind_host, options.port);
   std::unordered_map<int, Connection> connections;
   connections.emplace(listener_fd, Connection{listener_fd, ConnectionKind::Client, {}, {}, false, true, false, 0, 0, {}});
   loop->watch(listener_fd, true, false);
@@ -465,4 +480,3 @@ void run_server(const ServerOptions &options,
   }
   connections.clear();
 }
-
