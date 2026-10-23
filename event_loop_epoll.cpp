@@ -22,14 +22,8 @@ EventLoop::~EventLoop() {
 void EventLoop::watch(int fd, bool readable, bool writable) {
     struct epoll_event ev{};
     uint32_t events = 0;
-
-    if (readable) {
-        events |= EPOLLIN;
-    }
-    if (writable) {
-        events |= EPOLLOUT;
-    }
-
+    if (readable) events |= EPOLLIN;
+    if (writable) events |= EPOLLOUT;
     ev.events = events;
     ev.data.fd = fd;
 

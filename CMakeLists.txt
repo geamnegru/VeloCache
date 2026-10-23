@@ -19,12 +19,6 @@ set(SOURCES
     event_loop.cpp
 )
 
-if(APPLE OR FREEBSD OR OPENBSD OR NETBSD OR DRAGONFLYBSD)
-    list(APPEND SOURCES event_loop_kqueue.cpp)
-else()
-    list(APPEND SOURCES event_loop_epoll.cpp)
-endif()
-
 add_executable(velocache ${SOURCES})
 target_include_directories(velocache PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(velocache pthread)
