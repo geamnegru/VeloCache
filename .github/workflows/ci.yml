@@ -8,6 +8,7 @@ permissions:
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
   test:
     strategy:
@@ -22,25 +23,35 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y cmake g++
+
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
       - name: Build
         run: cmake --build build --config Release -j$(nproc)
+
       - name: Run unit tests
         run: ctest --test-dir build --output-on-failure
+
       - name: Run integration tests
         run: |
           python3 tests/integration.py ./build/velocache
           python3 tests/resp_integration.py ./build/velocache
-          python3 tests/background_io.py ./build/velocache ./build/slow_fsync${{ runner.os == 'Linux' && '.so' || '.dylib' }}
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            python3 tests/background_io.py ./build/velocache ./build/slow_fsync.dylib
+          fi
+
       - name: Run benchmark
         run: python3 benchmarks/run.py --requests 50
