@@ -61,6 +61,9 @@ void EventLoop::watch(int fd, bool readable, bool writable) {
     } while (result == -1 && errno == EINTR);
 
     if (result == -1) {
+        if (errno == ENOENT || errno == EBADF) {
+            return;
+        }
         throw std::system_error(errno, std::generic_category(), "kevent watch");
     }
 }
