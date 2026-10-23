@@ -62,13 +62,15 @@ target_include_directories(background_worker_test PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(background_worker_test pthread)
 add_test(NAME background_worker_test COMMAND background_worker_test)
 
-# Slow fsync test library
+# Slow fsync test library is macOS-only: it relies on Darwin interposition.
 if(APPLE)
     add_library(slow_fsync MODULE tests/slow_fsync.cpp)
     set_target_properties(slow_fsync PROPERTIES SUFFIX ".dylib")
-else()
-    add_library(slow_fsync MODULE tests/slow_fsync.cpp)
-    set_target_properties(slow_fsync PROPERTIES SUFFIX ".so")
+
+    add_test(NAME background_io_py
+        COMMAND python3 ${CMAKE_SOURCE_DIR}/tests/background_io.py $<TARGET_FILE:velocache> $<TARGET_FILE:slow_fsync>
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
 endif()
 
 # Integration tests (Python)
@@ -79,11 +81,6 @@ add_test(NAME integration_py
 
 add_test(NAME resp_integration_py
     COMMAND python3 ${CMAKE_SOURCE_DIR}/tests/resp_integration.py $<TARGET_FILE:velocache>
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
-
-add_test(NAME background_io_py
-    COMMAND python3 ${CMAKE_SOURCE_DIR}/tests/background_io.py $<TARGET_FILE:velocache> $<TARGET_FILE:slow_fsync>
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
