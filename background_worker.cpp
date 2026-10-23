@@ -70,6 +70,16 @@ void BackgroundWorker::run() {
       std::unique_lock<std::mutex> lock(mutex_);
       available_.wait(lock, [this] { return stopping_ || !jobs_.empty(); });
       if (jobs_.empty())
+        if (event.writable && connections.find(event.fd) != connections.end())
+          flush(event.fd);
+      }
+    } catch (const std::exception &error) {
+      std::cerr << "fatal server error: " << error.what() << '\n';
+      throw;
+    }
+  }
+}
+
         return;
       job = std::move(jobs_.front());
       jobs_.pop_front();
